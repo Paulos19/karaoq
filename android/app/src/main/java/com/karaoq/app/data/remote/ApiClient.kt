@@ -8,8 +8,8 @@ import java.util.concurrent.TimeUnit
 
 object ApiClient {
 
-    // URL padrão: com 'adb reverse tcp:8000 tcp:8000', http://localhost:8000/ funciona direto via USB!
-    var currentBaseUrl: String = "http://localhost:8000/"
+    // URL padrão: VPS de produção Easypanel (com fallback/edição para local http://localhost:8000/)
+    var currentBaseUrl: String = "https://services-karaoq.khdya3.easypanel.host/"
         private set
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
