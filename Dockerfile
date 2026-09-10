@@ -38,5 +38,5 @@ RUN mkdir -p storage/uploads storage/separated
 
 EXPOSE 8000
 
-# Execução do servidor Uvicorn
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Execução do servidor Uvicorn com suporte a proxy headers
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips=*"]

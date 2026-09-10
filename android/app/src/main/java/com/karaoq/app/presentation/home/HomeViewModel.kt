@@ -3,11 +3,15 @@ package com.karaoq.app.presentation.home
 import android.app.Application
 import android.net.Uri
 import android.provider.OpenableColumns
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import com.karaoq.app.data.model.JobStatus
 import com.karaoq.app.data.remote.ApiClient
 import com.karaoq.app.domain.model.KaraoqTrack
@@ -35,20 +39,52 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     private var pollingJob: Job? = null
     private var progressTrackingJob: Job? = null
 
-    // ExoPlayer para reprodução sincronizada
-    private val exoPlayer: ExoPlayer = ExoPlayer.Builder(application).build().apply {
-        addListener(object : Player.Listener {
-            override fun onIsPlayingChanged(isPlaying: Boolean) {
-                _uiState.update { it.copy(isPlaying = isPlaying) }
-            }
+    // DataSource HTTP com suporte obrigatório a redirecionamentos cross-protocol (http -> https)
+    private val httpDataSourceFactory = DefaultHttpDataSource.Factory()
+        .setAllowCrossProtocolRedirects(true)
+        .setConnectTimeoutMs(30000)
+        .setReadTimeoutMs(30000)
 
-            override fun onPlaybackStateChanged(playbackState: Int) {
-                if (playbackState == Player.STATE_READY) {
-                    _uiState.update { it.copy(durationMs = duration.coerceAtLeast(0L)) }
+    private val mediaSourceFactory = DefaultMediaSourceFactory(application)
+        .setDataSourceFactory(httpDataSourceFactory)
+
+    // ExoPlayer para reprodução sincronizada de voz e playback
+    private val exoPlayer: ExoPlayer = ExoPlayer.Builder(application)
+        .setMediaSourceFactory(mediaSourceFactory)
+        .build().apply {
+            addListener(object : Player.Listener {
+                override fun onIsPlayingChanged(isPlaying: Boolean) {
+                    _uiState.update { it.copy(isPlaying = isPlaying) }
                 }
-            }
-        })
-    }
+
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    when (playbackState) {
+                        Player.STATE_READY -> {
+                            _uiState.update {
+                                it.copy(
+                                    durationMs = duration.coerceAtLeast(0L),
+                                    errorMessage = null
+                                )
+                            }
+                        }
+                        Player.STATE_ENDED -> {
+                            _uiState.update { it.copy(isPlaying = false) }
+                        }
+                        else -> Unit
+                    }
+                }
+
+                override fun onPlayerError(error: PlaybackException) {
+                    Log.e("KaraoQ", "Erro de reprodução no ExoPlayer: ${error.errorCodeName}", error)
+                    _uiState.update {
+                        it.copy(
+                            isPlaying = false,
+                            errorMessage = "Erro ao tocar áudio: ${error.message ?: error.errorCodeName}"
+                        )
+                    }
+                }
+            })
+        }
 
     init {
         startPlayerTracking()
@@ -67,6 +103,20 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 delay(300)
             }
+        }
+    }
+
+    private fun sanitizeUrl(url: String?): String? {
+        if (url.isNullOrBlank()) return null
+        // Se a URL do arquivo veio como http:// mas não é localhost, force https:// para evitar bloqueios e redirecionamentos
+        return if (url.startsWith("http://") &&
+            !url.contains("localhost") &&
+            !url.contains("127.0.0.1") &&
+            !url.contains("10.0.2.2")
+        ) {
+            url.replaceFirst("http://", "https://")
+        } else {
+            url
         }
     }
 
@@ -179,20 +229,24 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
                         when (JobStatus.fromString(status.status)) {
                             JobStatus.COMPLETED -> {
+                                val instrumentalSafe = sanitizeUrl(status.instrumentalUrl)
+                                val vocalsSafe = sanitizeUrl(status.vocalsUrl)
+
                                 val track = KaraoqTrack(
                                     id = taskId,
                                     title = filename,
-                                    instrumentalUrl = status.instrumentalUrl,
-                                    vocalsUrl = status.vocalsUrl
+                                    instrumentalUrl = instrumentalSafe,
+                                    vocalsUrl = vocalsSafe
                                 )
                                 _uiState.update {
                                     it.copy(
                                         separationState = SeparationUiState.Ready(track),
-                                        activeStem = StemType.INSTRUMENTAL
+                                        activeStem = StemType.INSTRUMENTAL,
+                                        errorMessage = null
                                     )
                                 }
-                                // Prepara o áudio instrumental padrão no player
-                                status.instrumentalUrl?.let { preparePlayer(it) }
+                                // Prepara o áudio instrumental padrão no player com URL segura
+                                instrumentalSafe?.let { preparePlayer(it) }
                                 break
                             }
                             JobStatus.FAILED -> {
@@ -225,11 +279,16 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun preparePlayer(audioUrl: String) {
+    private fun preparePlayer(audioUrl: String, autoPlay: Boolean = false) {
+        val safeUrl = sanitizeUrl(audioUrl) ?: return
+        Log.i("KaraoQ", "Preparando ExoPlayer com URL: $safeUrl")
         viewModelScope.launch(Dispatchers.Main) {
-            val mediaItem = MediaItem.fromUri(audioUrl)
+            val mediaItem = MediaItem.fromUri(safeUrl)
             exoPlayer.setMediaItem(mediaItem)
             exoPlayer.prepare()
+            if (autoPlay) {
+                exoPlayer.play()
+            }
         }
     }
 
@@ -237,7 +296,19 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         if (exoPlayer.isPlaying) {
             exoPlayer.pause()
         } else {
-            exoPlayer.play()
+            val readyState = _uiState.value.separationState as? SeparationUiState.Ready
+            val currentStem = _uiState.value.activeStem
+            val currentTargetUrl = if (currentStem == StemType.VOCALS) {
+                readyState?.track?.vocalsUrl
+            } else {
+                readyState?.track?.instrumentalUrl
+            }
+
+            if (exoPlayer.playbackState == Player.STATE_IDLE && currentTargetUrl != null) {
+                preparePlayer(currentTargetUrl, autoPlay = true)
+            } else {
+                exoPlayer.play()
+            }
         }
     }
 
@@ -246,12 +317,13 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         val currentPos = exoPlayer.currentPosition
         val wasPlaying = exoPlayer.isPlaying
 
-        val targetUrl = when (stem) {
+        val rawUrl = when (stem) {
             StemType.INSTRUMENTAL -> readyState.track.instrumentalUrl
             StemType.VOCALS -> readyState.track.vocalsUrl
             StemType.ORIGINAL -> readyState.track.instrumentalUrl
         } ?: return
 
+        val targetUrl = sanitizeUrl(rawUrl) ?: return
         _uiState.update { it.copy(activeStem = stem) }
 
         viewModelScope.launch(Dispatchers.Main) {

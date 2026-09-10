@@ -102,7 +102,13 @@ async def get_separation_status(task_id: str, request: Request):
             detail=f"Tarefa com ID '{task_id}' não encontrada."
         )
 
-    base_url = str(request.base_url).rstrip("/")
+    forwarded_proto = request.headers.get("x-forwarded-proto")
+    forwarded_host = request.headers.get("x-forwarded-host")
+
+    scheme = forwarded_proto or request.url.scheme
+    host = forwarded_host or request.headers.get("host") or request.url.netloc
+    base_url = f"{scheme}://{host}".rstrip("/")
+
     vocals_url = None
     instrumental_url = None
 
