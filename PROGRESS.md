@@ -48,7 +48,15 @@ Acompanhamento em tempo real do desenvolvimento do KaraoQ (Backend IA + Android 
 - [x] Compilação do APK de Debug com Sucesso: `app-debug.apk` gerado (19.5 MB)
 - [x] Instalação e execução com sucesso em dispositivo físico via ADB (modelo `2412DPC0AG`) com `adb reverse` ativo
 
-### 5. Próximos Passos (Fases Futuras)
-- [ ] Sincronização de letras LRC / AI Lyrics Transcription
+### 5. Letras Sincronizadas & Biblioteca no Storage (Nova Fase Concluída)
+- [x] Serviço de busca de letras (`backend/app/services/lyrics_service.py`) com integração LRCLIB + `lyrics-api`
+- [x] Parser de formato LRC com timestamps precisos em milissegundos
+- [x] Serviço de armazenamento e persistência de músicas (`backend/app/services/song_storage_service.py` em `storage/songs/`)
+- [x] Endpoints de API REST: `GET /api/v1/lyrics/search`, `GET /api/v1/songs`, `POST /api/v1/songs`, `DELETE /api/v1/songs/{id}`
+- [x] Componente de Karaokê com Teleprompter em tempo real (`presentation/components/LyricsView.kt` com auto-scroll e seek interativo)
+- [x] Tela de biblioteca de músicas salvas (`presentation/library/SavedSongsScreen.kt`) com reprodução instantânea
+- [x] Interface com abas de navegação ("Criar Karaokê" e "Músicas Salvas") e campos de Cantor e Título
+
+### 6. Próximos Passos (Fases Futuras)
 - [ ] Sistema de pontuação vocal em tempo real (Pitch Detection / AudioRecord)
 - [ ] Suporte a WebSocket para progresso de inferência em tempo real
