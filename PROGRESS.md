@@ -6,9 +6,10 @@ Acompanhamento em tempo real do desenvolvimento do KaraoQ (Backend IA + Android 
 
 ## 📊 Status Geral do Projeto
 
-- **Fase Atual:** Fase 1 - Setup Arquitetural & Fundação Monorepo
+- **Fase Atual:** Fase 1 - Setup Arquitetural & Fundação Monorepo (Concluída)
 - **Última Atualização:** 10/09/2026
 - **Repositório Remoto:** `https://github.com/Paulos19/karaoq.git`
+- **URL da API em Produção (Easypanel):** `https://services-karaoq.khdya3.easypanel.host/`
 
 ---
 
