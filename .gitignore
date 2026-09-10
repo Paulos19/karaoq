@@ -1,0 +1,62 @@
+# Git Ignore for KaraoQ Monorepo
+
+# Python & Backend
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.env
+venv/
+.venv/
+ENV/
+
+# Backend audio storage (keep folders via .gitkeep)
+backend/storage/uploads/*
+!backend/storage/uploads/.gitkeep
+backend/storage/separated/*
+!backend/storage/separated/.gitkeep
+
+# Android & Gradle
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+android/build/
+android/app/build/
+android/.gradle/
+android/local.properties
+android/.idea/
+
+# OS and IDE files
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.vscode/

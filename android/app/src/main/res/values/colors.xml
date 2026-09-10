@@ -1,0 +1,7 @@
+<resources>
+    <color name="karaoq_background">#0F0F17</color>
+    <color name="karaoq_surface">#1A1A27</color>
+    <color name="karaoq_primary">#00F0FF</color>
+    <color name="karaoq_secondary">#FF007F</color>
+    <color name="karaoq_accent">#7928CA</color>
+</resources>

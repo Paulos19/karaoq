@@ -1,0 +1,13 @@
+# KaraoQ Backend Dependencies
+fastapi>=0.110.0
+uvicorn[standard]>=0.28.0
+python-multipart>=0.0.9
+pydantic>=2.6.0
+pydantic-settings>=2.2.0
+aiofiles>=23.2.1
+demucs>=4.0.1
+torch>=2.1.0
+torchaudio>=2.1.0
+soundfile>=0.12.1
+python-dotenv>=1.0.1
+google-genai>=0.1.1
