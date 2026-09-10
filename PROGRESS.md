@@ -45,6 +45,7 @@ Acompanhamento em tempo real do desenvolvimento do KaraoQ (Backend IA + Android 
 - [x] `MainActivity.kt` integrando o fluxo de envio de áudio, acompanhamento de progresso e player
 - [x] Script para compilação e instalação direta via depuração USB (`android/install_apk.bat` com `adb reverse`)
 - [x] Compilação do APK de Debug com Sucesso: `app-debug.apk` gerado (19.5 MB)
+- [x] Instalação e execução com sucesso em dispositivo físico via ADB (modelo `2412DPC0AG`) com `adb reverse` ativo
 
 ### 5. Próximos Passos (Fases Futuras)
 - [ ] Sincronização de letras LRC / AI Lyrics Transcription
