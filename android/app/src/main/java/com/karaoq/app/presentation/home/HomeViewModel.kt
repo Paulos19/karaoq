@@ -15,7 +15,11 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import com.karaoq.app.data.model.JobStatus
 import com.karaoq.app.data.remote.ApiClient
 import com.karaoq.app.domain.model.KaraoqTrack
+import com.karaoq.app.domain.model.NavigationTab
+import com.karaoq.app.domain.model.SavedSong
 import com.karaoq.app.domain.model.SeparationUiState
+import com.karaoq.app.domain.model.SongCreatePayloadDto
+import com.karaoq.app.domain.model.SongLyrics
 import com.karaoq.app.domain.model.StemType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -88,6 +92,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         startPlayerTracking()
+        loadSavedSongs()
     }
 
     private fun startPlayerTracking() {
@@ -101,14 +106,13 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                         )
                     }
                 }
-                delay(300)
+                delay(250)
             }
         }
     }
 
     private fun sanitizeUrl(url: String?): String? {
         if (url.isNullOrBlank()) return null
-        // Se a URL do arquivo veio como http:// mas não é localhost, force https:// para evitar bloqueios e redirecionamentos
         return if (url.startsWith("http://") &&
             !url.contains("localhost") &&
             !url.contains("127.0.0.1") &&
@@ -120,6 +124,21 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun switchTab(tab: NavigationTab) {
+        _uiState.update { it.copy(currentTab = tab) }
+        if (tab == NavigationTab.LIBRARY) {
+            loadSavedSongs()
+        }
+    }
+
+    fun updateArtistInput(artist: String) {
+        _uiState.update { it.copy(artistInput = artist) }
+    }
+
+    fun updateTitleInput(title: String) {
+        _uiState.update { it.copy(titleInput = title) }
+    }
+
     fun updateBackendUrl(newUrl: String) {
         ApiClient.updateBaseUrl(newUrl)
         _uiState.update { it.copy(backendUrl = ApiClient.currentBaseUrl) }
@@ -127,19 +146,83 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     fun onFileSelected(uri: Uri) {
         val fileName = getFileNameFromUri(uri)
+        val nameWithoutExt = fileName.substringBeforeLast(".")
+
+        var detectedArtist = ""
+        var detectedTitle = nameWithoutExt
+
+        if (nameWithoutExt.contains(" - ")) {
+            val parts = nameWithoutExt.split(" - ", limit = 2)
+            detectedArtist = parts[0].trim()
+            detectedTitle = parts[1].trim()
+        }
+
         _uiState.update {
             it.copy(
                 selectedFileUri = uri,
                 selectedFileName = fileName,
+                artistInput = if (it.artistInput.isBlank()) detectedArtist else it.artistInput,
+                titleInput = if (it.titleInput.isBlank()) detectedTitle else it.titleInput,
                 separationState = SeparationUiState.Idle,
+                isSongSaved = false,
                 errorMessage = null
             )
+        }
+
+        // Se já temos artista e título, busca a letra automaticamente
+        if (detectedArtist.isNotBlank() && detectedTitle.isNotBlank()) {
+            searchLyrics(detectedArtist, detectedTitle)
+        }
+    }
+
+    fun searchLyrics(artist: String = _uiState.value.artistInput, title: String = _uiState.value.titleInput) {
+        if (artist.isBlank() || title.isBlank()) return
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSearchingLyrics = true, errorMessage = null) }
+            try {
+                val durationSec = if (_uiState.value.durationMs > 0) (_uiState.value.durationMs / 1000).toInt() else null
+                val response = withContext(Dispatchers.IO) {
+                    ApiClient.apiService.searchLyrics(
+                        artist = artist.trim(),
+                        title = title.trim(),
+                        durationSeconds = durationSec
+                    )
+                }
+
+                if (response.isSuccessful && response.body() != null) {
+                    val body = response.body()!!
+                    val lyrics = SongLyrics(
+                        isSynced = body.isSynced,
+                        lines = body.lines,
+                        plainText = body.plainText,
+                        rawLrc = body.rawLrc,
+                        source = body.source
+                    )
+                    _uiState.update {
+                        it.copy(
+                            lyrics = lyrics,
+                            isSearchingLyrics = false
+                        )
+                    }
+                } else {
+                    _uiState.update { it.copy(isSearchingLyrics = false) }
+                }
+            } catch (e: Exception) {
+                Log.w("KaraoQ", "Falha na busca de letra: ${e.message}")
+                _uiState.update { it.copy(isSearchingLyrics = false) }
+            }
         }
     }
 
     fun startSeparation() {
         val uri = _uiState.value.selectedFileUri ?: return
         val filename = _uiState.value.selectedFileName ?: "audio.mp3"
+
+        // Garante busca de letra caso ainda não tenha buscado
+        if (_uiState.value.lyrics == null && _uiState.value.artistInput.isNotBlank() && _uiState.value.titleInput.isNotBlank()) {
+            searchLyrics()
+        }
 
         viewModelScope.launch {
             _uiState.update {
@@ -150,7 +233,6 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             try {
-                // Lê os bytes do arquivo selecionado de forma assíncrona
                 val fileBytes = withContext(Dispatchers.IO) {
                     getApplication<Application>().contentResolver.openInputStream(uri)?.use {
                         it.readBytes()
@@ -212,7 +294,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         pollingJob?.cancel()
         pollingJob = viewModelScope.launch {
             var attempts = 0
-            val maxAttempts = 300 // até ~10 minutos para áudios longos
+            val maxAttempts = 300
 
             while (isActive && attempts < maxAttempts) {
                 attempts++
@@ -232,9 +314,12 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                                 val instrumentalSafe = sanitizeUrl(status.instrumentalUrl)
                                 val vocalsSafe = sanitizeUrl(status.vocalsUrl)
 
+                                val title = _uiState.value.titleInput.ifBlank { filename }
+                                val artist = _uiState.value.artistInput
+
                                 val track = KaraoqTrack(
                                     id = taskId,
-                                    title = filename,
+                                    title = title,
                                     instrumentalUrl = instrumentalSafe,
                                     vocalsUrl = vocalsSafe
                                 )
@@ -245,8 +330,10 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                                         errorMessage = null
                                     )
                                 }
-                                // Prepara o áudio instrumental padrão no player com URL segura
                                 instrumentalSafe?.let { preparePlayer(it) }
+
+                                // Salva automaticamente no storage para a biblioteca
+                                autoSaveSongToStorage(taskId, title, artist, instrumentalSafe, vocalsSafe)
                                 break
                             }
                             JobStatus.FAILED -> {
@@ -273,8 +360,111 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                         }
                     }
                 } catch (e: Exception) {
-                    // Ignora falhas pontuais de rede no polling
+                    // Ignora falhas de polling temporárias
                 }
+            }
+        }
+    }
+
+    private fun autoSaveSongToStorage(
+        taskId: String,
+        title: String,
+        artist: String,
+        instrumentalUrl: String?,
+        vocalsUrl: String?
+    ) {
+        viewModelScope.launch {
+            try {
+                val payload = SongCreatePayloadDto(
+                    id = taskId,
+                    title = title,
+                    artist = artist,
+                    durationMs = _uiState.value.durationMs,
+                    vocalsUrl = vocalsUrl,
+                    instrumentalUrl = instrumentalUrl,
+                    lyrics = _uiState.value.lyrics
+                )
+                val res = withContext(Dispatchers.IO) {
+                    ApiClient.apiService.saveSong(payload)
+                }
+                if (res.isSuccessful) {
+                    _uiState.update { it.copy(isSongSaved = true) }
+                    loadSavedSongs()
+                }
+            } catch (e: Exception) {
+                Log.w("KaraoQ", "Erro ao salvar automaticamente no storage: ${e.message}")
+            }
+        }
+    }
+
+    fun loadSavedSongs() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingSavedSongs = true) }
+            try {
+                val res = withContext(Dispatchers.IO) {
+                    ApiClient.apiService.getSavedSongs()
+                }
+                if (res.isSuccessful && res.body() != null) {
+                    val sanitizedSongs = res.body()!!.map { song ->
+                        song.copy(
+                            vocalsUrl = sanitizeUrl(song.vocalsUrl),
+                            instrumentalUrl = sanitizeUrl(song.instrumentalUrl)
+                        )
+                    }
+                    _uiState.update {
+                        it.copy(
+                            savedSongs = sanitizedSongs,
+                            isLoadingSavedSongs = false
+                        )
+                    }
+                } else {
+                    _uiState.update { it.copy(isLoadingSavedSongs = false) }
+                }
+            } catch (e: Exception) {
+                Log.w("KaraoQ", "Erro ao carregar músicas salvas: ${e.message}")
+                _uiState.update { it.copy(isLoadingSavedSongs = false) }
+            }
+        }
+    }
+
+    fun playSavedSong(song: SavedSong) {
+        val track = KaraoqTrack(
+            id = song.id,
+            title = "${song.artist} - ${song.title}".trim().trim('-').trim(),
+            instrumentalUrl = sanitizeUrl(song.instrumentalUrl),
+            vocalsUrl = sanitizeUrl(song.vocalsUrl),
+            durationMs = song.durationMs
+        )
+
+        _uiState.update {
+            it.copy(
+                separationState = SeparationUiState.Ready(track),
+                lyrics = song.lyrics,
+                activeStem = StemType.INSTRUMENTAL,
+                currentTab = NavigationTab.CREATE, // Muda para a tela com o player
+                artistInput = song.artist,
+                titleInput = song.title,
+                isSongSaved = true,
+                errorMessage = null
+            )
+        }
+
+        song.instrumentalUrl?.let {
+            preparePlayer(it, autoPlay = true)
+        }
+    }
+
+    fun deleteSavedSong(songId: String) {
+        viewModelScope.launch {
+            try {
+                val res = withContext(Dispatchers.IO) {
+                    ApiClient.apiService.deleteSavedSong(songId)
+                }
+                if (res.isSuccessful) {
+                    loadSavedSongs()
+                }
+            } catch (e: Exception) {
+                Log.w("KaraoQ", "Erro ao deletar música salva: ${e.message}")
             }
         }
     }

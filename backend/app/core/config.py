@@ -38,6 +38,11 @@ class Settings(BaseSettings):
     STORAGE_DIR: Path = BASE_DIR / "storage"
     UPLOAD_DIR: Path = BASE_DIR / "storage" / "uploads"
     SEPARATED_DIR: Path = BASE_DIR / "storage" / "separated"
+    SONGS_DIR: Path = BASE_DIR / "storage" / "songs"
+
+    # External APIs
+    LYRICS_API_URL: str = "https://lyrics-api.vercel.app"
+    LRCLIB_API_URL: str = "https://lrclib.net/api"
 
     # Demucs AI Engine Configuration
     DEMUCS_MODEL: str = "htdemucs"
@@ -52,6 +57,7 @@ class Settings(BaseSettings):
         """Ensure that storage directories exist."""
         self.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
         self.SEPARATED_DIR.mkdir(parents=True, exist_ok=True)
+        self.SONGS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 settings = Settings()
