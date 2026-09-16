@@ -18,6 +18,7 @@ import com.karaoq.app.data.audio.MicrophoneManager
 import com.karaoq.app.data.audio.PerformanceRecorder
 import com.karaoq.app.data.model.JobStatus
 import com.karaoq.app.data.model.LeaderboardSubmitRequest
+import com.karaoq.app.data.model.SeparationStatusResponse
 import com.karaoq.app.data.remote.ApiClient
 import com.karaoq.app.data.remote.SeparationWebSocketManager
 import com.karaoq.app.domain.audio.KaraokeScoringEngine

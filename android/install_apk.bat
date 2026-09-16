@@ -6,6 +6,8 @@ echo   KaraoQ - Build & Instalação Direta via Depuração USB
 echo =========================================================
 
 set ADB_PATH=C:\Users\Usuario\AppData\Local\Android\Sdk\platform-tools\adb.exe
+set JAVA_HOME=D:\Android\jbr
+set ANDROID_HOME=C:\Users\Usuario\AppData\Local\Android\Sdk
 
 if not exist "!ADB_PATH!" (
     echo [!] ADB não encontrado no caminho padrão. Tentando 'adb' do PATH...
