@@ -302,7 +302,10 @@ fun HomeScreen(
                         lyrics = uiState.lyrics,
                         canTranscribeAi = uiState.taskStatus?.taskId != null,
                         isTranscribingLyrics = uiState.isTranscribingLyrics,
+                        transcriptionProgress = uiState.transcriptionProgress,
+                        partialTranscribedVerse = uiState.partialTranscribedVerse,
                         onTranscribeLyricsWithAi = { viewModel.transcribeWithAi() },
+                        onEnterKaraokeStage = { viewModel.enterStageFromCurrentTrack() },
                         onTogglePlay = { viewModel.togglePlayPause() },
                         onSwitchStem = { viewModel.switchStem(it) },
                         onSeek = { viewModel.seekTo(it) }
@@ -620,7 +623,10 @@ fun KaraokePlayerCard(
     lyrics: SongLyrics?,
     canTranscribeAi: Boolean = false,
     isTranscribingLyrics: Boolean = false,
+    transcriptionProgress: Float = 0f,
+    partialTranscribedVerse: String = "",
     onTranscribeLyricsWithAi: () -> Unit = {},
+    onEnterKaraokeStage: () -> Unit = {},
     onTogglePlay: () -> Unit,
     onSwitchStem: (StemType) -> Unit,
     onSeek: (Long) -> Unit
@@ -642,12 +648,43 @@ fun KaraokePlayerCard(
                 modifier = Modifier.padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Text(
-                    text = "3. Modo Karaokê Player",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = NeonCyan
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "3. Modo Karaokê Player",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = NeonCyan
+                    )
+
+                    Button(
+                        onClick = onEnterKaraokeStage,
+                        colors = ButtonDefaults.buttonColors(containerColor = ElectricGreen),
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 5.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Mic,
+                                contentDescription = null,
+                                tint = DarkBackground,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = "Ir para o Palco 🎤",
+                                color = DarkBackground,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
+                }
 
                 Text(
                     text = trackTitle,
@@ -754,6 +791,7 @@ fun KaraokePlayerCard(
             LyricsView(
                 lyrics = lyrics,
                 currentPositionMs = currentPositionMs,
+                isStageMode = false,
                 onSeek = onSeek
             )
         } else if (canTranscribeAi) {
@@ -766,7 +804,7 @@ fun KaraokePlayerCard(
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -781,10 +819,49 @@ fun KaraokePlayerCard(
                         )
                     }
                     Text(
-                        text = "Use a IA (Gemini Audio) para transcrever a voz isolada e gerar os versos sincronizados automaticamente.",
+                        text = "Use o Whisper (IA Local) para transcrever a voz isolada e gerar os versos sincronizados automaticamente com streaming WebSocket.",
                         style = MaterialTheme.typography.bodySmall,
                         color = TextSecondary
                     )
+
+                    if (isTranscribingLyrics) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            LinearProgressIndicator(
+                                progress = { (transcriptionProgress / 100f).coerceIn(0f, 1f) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(6.dp)
+                                    .clip(RoundedCornerShape(3.dp)),
+                                color = NeonPink,
+                                trackColor = DarkSurfaceBorder
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = if (partialTranscribedVerse.isNotBlank()) "♪ $partialTranscribedVerse" else "Transcrevendo voz com Whisper...",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = NeonCyan,
+                                    fontSize = 11.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Text(
+                                    text = "${transcriptionProgress.toInt()}%",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = NeonPink,
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+                    }
+
                     Button(
                         onClick = onTranscribeLyricsWithAi,
                         enabled = !isTranscribingLyrics,
@@ -794,11 +871,11 @@ fun KaraokePlayerCard(
                         if (isTranscribingLyrics) {
                             CircularProgressIndicator(modifier = Modifier.size(16.dp), color = TextPrimary, strokeWidth = 2.dp)
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Transcrevendo com IA...", color = TextPrimary, fontSize = 12.sp)
+                            Text("Transcrevendo com Whisper (${transcriptionProgress.toInt()}%)...", color = TextPrimary, fontSize = 12.sp)
                         } else {
                             Icon(imageVector = Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp), tint = TextPrimary)
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Transcrever Letra com IA ✨", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Text("Transcrever Letra com Whisper IA (WebSocket) ✨", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
                     }
                 }

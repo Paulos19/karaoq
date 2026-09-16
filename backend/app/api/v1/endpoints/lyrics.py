@@ -1,10 +1,13 @@
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, HTTPException, Query, status
+import logging
+from fastapi import APIRouter, HTTPException, Query, WebSocket, WebSocketDisconnect, status
 from pydantic import BaseModel
 
 from app.services.ai_transcription_service import ai_transcription_service
 from app.services.lyrics_service import lyrics_service
+from app.services.whisper_service import whisper_service
 
+logger = logging.getLogger("karaoq.lyrics")
 router = APIRouter()
 
 
@@ -64,12 +67,20 @@ async def transcribe_lyrics_with_ai(
 ):
     """
     Transcreve a voz isolada gerada pelo Demucs em letra sincronizada LRC
-    utilizando inteligência artificial multimodal (Gemini Audio).
+    utilizando Whisper com fallback para Gemini Audio.
     """
     try:
-        result = await ai_transcription_service.transcribe_vocals_to_lrc(task_id)
+        try:
+            result = await whisper_service.transcribe_vocals_to_lrc(task_id)
+        except Exception as whisper_err:
+            logger.warning(f"Whisper falhou ou não disponível ({whisper_err}), tentando Gemini Audio...")
+            if ai_transcription_service.is_configured():
+                result = await ai_transcription_service.transcribe_vocals_to_lrc(task_id)
+            else:
+                raise whisper_err
+
         return LyricsSearchResponse(
-            source=result.get("source", "gemini_ai"),
+            source=result.get("source", "whisper"),
             is_synced=result.get("is_synced", True),
             artist=artist or "IA Transcrita",
             title=title or "Faixa Transcrita",
@@ -86,3 +97,51 @@ async def transcribe_lyrics_with_ai(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Falha ao transcrever com IA: {str(ex)}"
         )
+
+
+@router.websocket("/ws/transcribe/{task_id}")
+async def websocket_transcribe(websocket: WebSocket, task_id: str):
+    """
+    Canal WebSocket para streaming em tempo real do progresso e dos versos detectados
+    durante a transcrição da voz isolada com Whisper.
+    """
+    await websocket.accept()
+    logger.info(f"Cliente WebSocket conectado para transcrição Whisper da tarefa {task_id}")
+    try:
+        async def on_progress(data: Dict[str, Any]):
+            try:
+                await websocket.send_json(data)
+            except Exception as send_err:
+                logger.warning(f"Erro ao enviar atualização no WebSocket de transcrição: {send_err}")
+
+        # Inicia a transcrição assíncrona com callbacks em tempo real
+        result = await whisper_service.transcribe_vocals_to_lrc(task_id, on_progress=on_progress)
+
+        # Envia o pacote consolidado final e encerra a conexão normalmente
+        await websocket.send_json({
+            "status": "completed",
+            "progress": 100.0,
+            "task_id": task_id,
+            "result": {
+                "source": result.get("source", "whisper"),
+                "is_synced": True,
+                "lines": result.get("lines", []),
+                "raw_lrc": result.get("raw_lrc"),
+                "plain_text": result.get("plain_text", "")
+            }
+        })
+        await websocket.close()
+    except WebSocketDisconnect:
+        logger.info(f"Cliente WebSocket desconectado da transcrição {task_id}")
+    except Exception as ex:
+        logger.error(f"Erro no WebSocket de transcrição para {task_id}: {ex}")
+        try:
+            await websocket.send_json({
+                "status": "error",
+                "progress": 0.0,
+                "message": str(ex),
+                "task_id": task_id
+            })
+            await websocket.close()
+        except Exception:
+            pass

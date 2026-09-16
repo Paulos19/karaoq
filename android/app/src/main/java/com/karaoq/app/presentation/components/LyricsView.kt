@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -56,6 +58,7 @@ fun LyricsView(
     modifier: Modifier = Modifier,
     lyrics: SongLyrics,
     currentPositionMs: Long,
+    isStageMode: Boolean = false,
     onSeek: (Long) -> Unit
 ) {
     val listState = rememberLazyListState()
@@ -101,7 +104,15 @@ fun LyricsView(
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = if (isStageMode) {
+                Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
+            } else {
+                Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            },
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Cabeçalho da Letra com Badge de Sincronização
@@ -154,9 +165,15 @@ fun LyricsView(
 
             if (lyrics.lines.isEmpty()) {
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 120.dp),
+                    modifier = if (isStageMode) {
+                        Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                    } else {
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 120.dp)
+                    },
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -171,9 +188,15 @@ fun LyricsView(
                 // Lista rolável de frases sincronizadas
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 220.dp, max = 340.dp),
+                    modifier = if (isStageMode) {
+                        Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                    } else {
+                        Modifier
+                            .fillMaxWidth()
+                            .height(260.dp)
+                    },
                     contentPadding = PaddingValues(vertical = 40.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {

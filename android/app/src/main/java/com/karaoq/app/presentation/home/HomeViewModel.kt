@@ -21,7 +21,9 @@ import com.karaoq.app.data.model.LeaderboardSubmitRequest
 import com.karaoq.app.data.model.SeparationStatusResponse
 import com.karaoq.app.data.remote.ApiClient
 import com.karaoq.app.data.remote.SeparationWebSocketManager
+import com.karaoq.app.data.remote.TranscriptionWebSocketManager
 import com.karaoq.app.domain.audio.KaraokeScoringEngine
+import com.karaoq.app.domain.model.LyricLine
 import com.karaoq.app.domain.model.KaraoqTrack
 import com.karaoq.app.domain.model.NavigationTab
 import com.karaoq.app.domain.model.SavedSong
@@ -53,12 +55,14 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     val performanceRecorder = PerformanceRecorder(application)
     private val scoringEngine = KaraokeScoringEngine()
     private val webSocketManager = SeparationWebSocketManager()
+    private val transcriptionWebSocketManager = TranscriptionWebSocketManager()
     private var recordedPlayer: ExoPlayer? = null
 
     private var pollingJob: Job? = null
     private var progressTrackingJob: Job? = null
     private var countdownJob: Job? = null
     private var separationWebSocket: WebSocket? = null
+    private var transcriptionWebSocket: WebSocket? = null
 
     // DataSource HTTP com suporte obrigatório a redirecionamentos cross-protocol (http -> https)
     private val httpDataSourceFactory = DefaultHttpDataSource.Factory()
@@ -146,7 +150,11 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             microphoneManager.pitch.collect { pitch ->
                 if (_uiState.value.isMicActive && _uiState.value.isKaraokeActive && !_uiState.value.isCountdownRunning && _uiState.value.isPlaying) {
-                    val frameResult = scoringEngine.processFrame(pitch)
+                    val frameResult = scoringEngine.processFrame(
+                        pitch = pitch,
+                        amplitude = _uiState.value.micAmplitude,
+                        isSingingSection = true
+                    )
                     _uiState.update {
                         it.copy(
                             currentPitchNote = pitch.noteName,
@@ -771,20 +779,94 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // --- Transcrição com IA Multimodal (Gemini Audio) ---
+    // --- Transcrição com IA (Whisper via WebSocket com fallback HTTP) ---
     fun transcribeWithAi() {
         val taskId = _uiState.value.taskStatus?.taskId ?: return
-        val artist = _uiState.value.artistInput
-        val title = _uiState.value.titleInput
+        val artist = _uiState.value.artistInput.trim()
+        val title = _uiState.value.titleInput.trim()
 
+        transcriptionWebSocket?.close(1000, null)
+        transcriptionWebSocket = null
+
+        _uiState.update {
+            it.copy(
+                isTranscribingLyrics = true,
+                transcriptionProgress = 0f,
+                partialTranscribedVerse = "Iniciando Whisper IA...",
+                errorMessage = null
+            )
+        }
+
+        try {
+            transcriptionWebSocket = transcriptionWebSocketManager.startStreaming(
+                taskId = taskId,
+                baseUrl = _uiState.value.backendUrl,
+                onUpdate = { msg ->
+                    viewModelScope.launch {
+                        when (msg.status) {
+                            "transcribing" -> {
+                                _uiState.update { state ->
+                                    state.copy(
+                                        transcriptionProgress = msg.progress,
+                                        partialTranscribedVerse = msg.text ?: state.partialTranscribedVerse
+                                    )
+                                }
+                            }
+                            "completed" -> {
+                                val result = msg.result
+                                if (result != null) {
+                                    val lines = result.lines.map { LyricLine(timeMs = it.timeMs, text = it.text) }
+                                    val lyrics = SongLyrics(
+                                        isSynced = result.isSynced,
+                                        lines = lines,
+                                        plainText = result.plainText,
+                                        rawLrc = result.rawLrc,
+                                        source = result.source
+                                    )
+                                    _uiState.update { state ->
+                                        state.copy(
+                                            lyrics = lyrics,
+                                            isTranscribingLyrics = false,
+                                            transcriptionProgress = 100f,
+                                            partialTranscribedVerse = ""
+                                        )
+                                    }
+                                    Log.i("KaraoQ", "Letra transcrita via Whisper WebSocket: ${lines.size} versos.")
+                                } else {
+                                    _uiState.update { it.copy(isTranscribingLyrics = false) }
+                                }
+                            }
+                            "error" -> {
+                                Log.w("KaraoQ", "Erro no WebSocket Whisper: ${msg.message}. Tentando fallback HTTP...")
+                                fallbackHttpTranscription(taskId, artist, title)
+                            }
+                        }
+                    }
+                },
+                onError = { t ->
+                    Log.w("KaraoQ", "Falha no WebSocket Whisper: ${t.message}. Tentando fallback HTTP...")
+                    viewModelScope.launch {
+                        fallbackHttpTranscription(taskId, artist, title)
+                    }
+                },
+                onComplete = {
+                    transcriptionWebSocket = null
+                }
+            )
+        } catch (e: Exception) {
+            Log.w("KaraoQ", "Exceção ao iniciar WebSocket Whisper: ${e.message}. Tentando fallback HTTP...")
+            fallbackHttpTranscription(taskId, artist, title)
+        }
+    }
+
+    private fun fallbackHttpTranscription(taskId: String, artist: String, title: String) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isTranscribingLyrics = true, errorMessage = null) }
             try {
                 val res = withContext(Dispatchers.IO) {
                     ApiClient.apiService.transcribeLyricsWithAi(
                         taskId = taskId,
-                        artist = artist.trim(),
-                        title = title.trim()
+                        artist = artist,
+                        title = title
                     )
                 }
 
@@ -795,15 +877,17 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                         lines = body.lines,
                         plainText = body.plainText,
                         rawLrc = body.rawLrc,
-                        source = "gemini_ai"
+                        source = body.source
                     )
                     _uiState.update {
                         it.copy(
                             lyrics = lyrics,
-                            isTranscribingLyrics = false
+                            isTranscribingLyrics = false,
+                            transcriptionProgress = 100f,
+                            partialTranscribedVerse = ""
                         )
                     }
-                    Log.i("KaraoQ", "Letra transcrita com sucesso via Gemini Audio: ${lyrics.lines.size} versos.")
+                    Log.i("KaraoQ", "Letra transcrita com sucesso via Fallback HTTP: ${lyrics.lines.size} versos.")
                 } else {
                     val err = res.errorBody()?.string() ?: res.message()
                     _uiState.update {
@@ -814,15 +898,30 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 }
             } catch (e: Exception) {
-                Log.e("KaraoQ", "Exceção ao transcrever com IA: ${e.message}", e)
+                Log.e("KaraoQ", "Exceção ao transcrever via HTTP: ${e.message}", e)
                 _uiState.update {
                     it.copy(
                         isTranscribingLyrics = false,
-                        errorMessage = "Falha ao transcrever com IA: ${e.localizedMessage}"
+                        errorMessage = "Falha ao transcrever: ${e.localizedMessage}"
                     )
                 }
             }
         }
+    }
+
+    fun enterStageFromCurrentTrack() {
+        val readyState = _uiState.value.separationState as? SeparationUiState.Ready ?: return
+        val currentTrack = readyState.track
+        val song = SavedSong(
+            id = currentTrack.id,
+            title = _uiState.value.titleInput.ifBlank { currentTrack.title },
+            artist = _uiState.value.artistInput.ifBlank { "KaraoQ" },
+            instrumentalUrl = currentTrack.instrumentalUrl,
+            vocalsUrl = currentTrack.vocalsUrl,
+            durationMs = currentTrack.durationMs,
+            lyrics = _uiState.value.lyrics
+        )
+        startKaraoke(song)
     }
 
     // --- Placar Global de Líderes (Leaderboard) ---
@@ -1012,6 +1111,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         pollingJob?.cancel()
         progressTrackingJob?.cancel()
         separationWebSocket?.close(1000, null)
+        transcriptionWebSocket?.close(1000, null)
         microphoneManager.stop()
         exoPlayer.release()
     }

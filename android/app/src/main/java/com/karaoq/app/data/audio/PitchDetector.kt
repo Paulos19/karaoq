@@ -42,9 +42,9 @@ class PitchDetector(
             }
         }
 
-        // Se o sinal tiver energia muito baixa (silêncio ou ruído de fundo fraco), ignora
+        // Se o sinal tiver energia baixa (silêncio, ruído ambiente ou vazamento do alto-falante), ignora
         val rms = kotlin.math.sqrt((sumSquares / windowSize).toDouble()).toFloat()
-        if (rms < 0.02f) {
+        if (rms < 0.055f) {
             return PitchResult()
         }
 
@@ -95,8 +95,8 @@ class PitchDetector(
                     tauEstimate = tau
                 }
             }
-            // Se o melhor valor ainda for ruim (> 0.35), consideramos sem afinação definida (ruído/fala áfona)
-            if (minVal > 0.35f) {
+            // Limiar estrito (0.18f): rejeita ruído ambiente, fala sussurrada ou vazamento do playback
+            if (minVal > 0.18f) {
                 return PitchResult()
             }
         }
@@ -133,6 +133,9 @@ class PitchDetector(
         val noteName = "${noteNames[noteIndex]}$octave"
 
         val confidence = (1.0f - cmndf[tauEstimate]).coerceIn(0f, 1f)
+        if (confidence < 0.65f) {
+            return PitchResult()
+        }
 
         return PitchResult(
             frequencyHz = frequencyHz,

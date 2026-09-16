@@ -21,10 +21,12 @@ data class HomeUiState(
     val artistInput: String = "",
     val titleInput: String = "",
 
-    // Letras
+    // Letras & Transcrição IA (Whisper)
     val lyrics: SongLyrics? = null,
     val isSearchingLyrics: Boolean = false,
     val isTranscribingLyrics: Boolean = false,
+    val transcriptionProgress: Float = 0f,
+    val partialTranscribedVerse: String = "",
 
     // Separação
     val separationState: SeparationUiState = SeparationUiState.Idle,

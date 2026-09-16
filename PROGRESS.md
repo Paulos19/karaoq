@@ -6,7 +6,7 @@ Acompanhamento em tempo real do desenvolvimento do KaraoQ (Backend IA + Android 
 
 ## 📊 Status Geral do Projeto
 
-- **Fase Atual:** Fase 8 - Gravação Vocal, Transcrição IA (Gemini Audio) & Placar de Líderes (Concluída)
+- **Fase Atual:** Fase 9 - Correção de Layout, Responsividade & Whisper com WebSocket (Concluída)
 - **Última Atualização:** 16/09/2026
 - **Repositório Remoto:** `https://github.com/Paulos19/karaoq.git`
 - **URL da API em Produção (Easypanel):** `https://services-karaoq.khdya3.easypanel.host/`
@@ -84,7 +84,16 @@ Acompanhamento em tempo real do desenvolvimento do KaraoQ (Backend IA + Android 
 - [x] Endpoints REST de Leaderboard (`GET /api/v1/songs/{song_id}/leaderboard` e `POST /api/v1/songs/{song_id}/leaderboard`)
 - [x] Submissão de apelido do cantor e exibição do ranking Top 10 com medalhas no modal de encerramento do Karaokê (`KaraokeScreen.kt`)
 
-### 9. Próximos Passos (Fases Futuras)
+### 9. Correção de Layout, Responsividade & Whisper com WebSocket (Concluída)
+- [x] Correção de compilação Kotlin no motor de pontuação (`KaraokeScoringEngine.kt` e `HomeViewModel.kt` com cálculo de assertividade/acurácia vocal)
+- [x] Layout responsivo no `LyricsView.kt` (`isStageMode`) eliminando cortes de interface em qualquer densidade de tela
+- [x] Ação direta "Ir para o Palco" no `KaraokePlayerCard` logo após o término da separação de stems
+- [x] Serviço de transcrição local com Whisper (`whisper_service.py` com Faster-Whisper, quantização INT8 e sem dependência de chaves de nuvem)
+- [x] Canal WebSocket no backend (`/api/v1/lyrics/ws/transcribe/{task_id}`) para streaming em tempo real de progresso e versos detectados
+- [x] Cliente WebSocket no Android (`TranscriptionWebSocketManager.kt`) integrado ao `HomeViewModel` com barra de progresso ao vivo e fallback HTTP
+- [x] Compilação do novo APK de depuração com sucesso (`app-debug.apk` 19.75 MB)
+
+### 10. Próximos Passos (Fases Futuras)
 - [ ] Mixagem e masterização de áudio em tempo real com efeitos de estúdio (Reverb, Delay, Compressor e Equalizador)
 - [ ] Modo Duelo / Batalha de Voz com dois microfones ou pontuação competitiva lado a lado
 - [ ] Suporte a playlists, fila de espera ("Fila de Karaokê") e modo festa (Party Mode)

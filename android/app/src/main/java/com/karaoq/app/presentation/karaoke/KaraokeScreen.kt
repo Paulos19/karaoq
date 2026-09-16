@@ -186,6 +186,7 @@ fun KaraokeScreen(
                         modifier = Modifier.fillMaxSize(),
                         lyrics = lyrics,
                         currentPositionMs = uiState.currentPositionMs,
+                        isStageMode = true,
                         onSeek = { viewModel.seekTo(it) }
                     )
                 } else {
@@ -232,11 +233,12 @@ fun KaraokeScreen(
                                     if (uiState.isTranscribingLyrics) {
                                         CircularProgressIndicator(modifier = Modifier.size(16.dp), color = TextPrimary, strokeWidth = 2.dp)
                                         Spacer(modifier = Modifier.width(8.dp))
-                                        Text("Transcrevendo com IA...", color = TextPrimary, fontSize = 12.sp)
+                                        val progressText = if (uiState.transcriptionProgress > 0) " (${uiState.transcriptionProgress.toInt()}%)" else ""
+                                        Text("Whisper IA: ${uiState.partialTranscribedVerse.ifBlank { "Transcrevendo..." }}$progressText", color = TextPrimary, fontSize = 12.sp)
                                     } else {
                                         Icon(imageVector = Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp), tint = TextPrimary)
                                         Spacer(modifier = Modifier.width(6.dp))
-                                        Text("Gerar Letra com IA (Gemini) ✨", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                        Text("Gerar Letra com Whisper IA ✨", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                     }
                                 }
                             }
@@ -961,9 +963,10 @@ fun KaraokeResultDialog(
                             .padding(10.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        StatRow(label = "Maior Combo:", value = "${summary.maxCombo}x", color = NeonCyan)
-                        StatRow(label = "Afinação Perfeita:", value = "${summary.perfectHits}", color = ElectricGreen)
-                        StatRow(label = "Muito Bom:", value = "${summary.goodHits}", color = NeonPink)
+                        StatRow(label = "Precisão Vocal:", value = "${summary.accuracyPercentage}%", color = NeonCyan)
+                        StatRow(label = "Maior Combo:", value = "${summary.maxCombo}x", color = ElectricGreen)
+                        StatRow(label = "Afinação Perfeita:", value = "${summary.perfectHits}", color = NeonPink)
+                        StatRow(label = "Muito Bom:", value = "${summary.goodHits}", color = TextPrimary)
                         StatRow(label = "Quase lá:", value = "${summary.okHits}", color = TextSecondary)
                     }
                 }
