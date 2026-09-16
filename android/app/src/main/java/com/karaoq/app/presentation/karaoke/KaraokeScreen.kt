@@ -83,6 +83,7 @@ import androidx.compose.ui.window.DialogProperties
 import android.content.Intent
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import com.karaoq.app.presentation.components.KaraoqMedalBadge
 import com.karaoq.app.data.model.LeaderboardEntry
 import com.karaoq.app.domain.audio.KaraokeScoreSummary
 import com.karaoq.app.presentation.components.LyricsView
@@ -238,7 +239,7 @@ fun KaraokeScreen(
                                     } else {
                                         Icon(imageVector = Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp), tint = TextPrimary)
                                         Spacer(modifier = Modifier.width(6.dp))
-                                        Text("Gerar Letra com Whisper IA ✨", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                        Text("Gerar Letra com Whisper IA", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                     }
                                 }
                             }
@@ -339,15 +340,23 @@ fun KaraokeLiveScoreBar(
 
             // Nota Cantada no Momento
             if (isVoicePitched && note.isNotBlank()) {
-                Box(
+                Row(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
                         .background(NeonCyan.copy(alpha = 0.2f))
                         .border(1.dp, NeonCyan, RoundedCornerShape(8.dp))
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
+                    Icon(
+                        imageVector = Icons.Default.MusicNote,
+                        contentDescription = null,
+                        tint = NeonCyan,
+                        modifier = Modifier.size(13.dp)
+                    )
                     Text(
-                        text = "🎵 $note",
+                        text = note,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.ExtraBold,
                         color = NeonCyan
@@ -1117,7 +1126,7 @@ fun KaraokeResultDialog(
                                     modifier = Modifier.height(48.dp)
                                 ) {
                                     Text(
-                                        text = "Salvar 🏆",
+                                        text = "Salvar",
                                         color = DarkBackground,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 11.sp
@@ -1176,12 +1185,6 @@ fun KaraokeResultDialog(
                         } else {
                             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                 leaderboardEntries.forEachIndexed { index, entry ->
-                                    val medal = when (index) {
-                                        0 -> "🥇"
-                                        1 -> "🥈"
-                                        2 -> "🥉"
-                                        else -> "${index + 1}º"
-                                    }
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
@@ -1198,11 +1201,9 @@ fun KaraokeResultDialog(
                                             verticalAlignment = Alignment.CenterVertically,
                                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                                         ) {
-                                            Text(
-                                                text = medal,
-                                                fontSize = 12.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = if (index < 3) ElectricGreen else TextSecondary
+                                            KaraoqMedalBadge(
+                                                rank = index + 1,
+                                                size = 18.dp
                                             )
                                             Text(
                                                 text = entry.singerName,

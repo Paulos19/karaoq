@@ -223,7 +223,7 @@ fun LyricsView(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = line.text.ifBlank { "♪ ♪ ♪" },
+                                text = line.text.ifBlank { "(Instrumental)" },
                                 color = textColor,
                                 fontSize = fontSize,
                                 fontWeight = fontWeight,

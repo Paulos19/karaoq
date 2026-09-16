@@ -10,12 +10,14 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -29,23 +31,22 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Audiotrack
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.LibraryMusic
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.UploadFile
+import androidx.compose.material.icons.rounded.Audiotrack
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Error
+import androidx.compose.material.icons.rounded.GraphicEq
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Mic
+import androidx.compose.material.icons.rounded.MicExternalOn
+import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.UploadFile
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -57,48 +58,52 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
-import androidx.compose.material3.TabRowDefaults
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.karaoq.app.R
 import com.karaoq.app.domain.model.NavigationTab
 import com.karaoq.app.domain.model.SeparationUiState
 import com.karaoq.app.domain.model.SongLyrics
 import com.karaoq.app.domain.model.StemType
+import com.karaoq.app.presentation.components.GlassCard
+import com.karaoq.app.presentation.components.KaraoqBottomDock
+import com.karaoq.app.presentation.components.KaraoqPillButton
 import com.karaoq.app.presentation.components.LyricsView
+import com.karaoq.app.presentation.components.WaveformVisualizer
 import com.karaoq.app.presentation.karaoke.KaraokeScreen
+import com.karaoq.app.presentation.leaderboard.LeaderboardScreen
 import com.karaoq.app.presentation.library.SavedSongsScreen
+import com.karaoq.app.presentation.settings.SettingsScreen
 import com.karaoq.app.presentation.ui.theme.AlertRed
-import com.karaoq.app.presentation.ui.theme.DarkBackground
-import com.karaoq.app.presentation.ui.theme.DarkSurface
-import com.karaoq.app.presentation.ui.theme.DarkSurfaceBorder
-import com.karaoq.app.presentation.ui.theme.DarkSurfaceVariant
-import com.karaoq.app.presentation.ui.theme.ElectricGreen
-import com.karaoq.app.presentation.ui.theme.NeonCyan
-import com.karaoq.app.presentation.ui.theme.NeonPink
-import com.karaoq.app.presentation.ui.theme.NeonPurple
-import com.karaoq.app.presentation.ui.theme.TextPrimary
+import com.karaoq.app.presentation.ui.theme.AmberGlow
+import com.karaoq.app.presentation.ui.theme.CardDarkSurface
+import com.karaoq.app.presentation.ui.theme.CardElevated
+import com.karaoq.app.presentation.ui.theme.FlameOrange
+import com.karaoq.app.presentation.ui.theme.FlameOrangeLight
+import com.karaoq.app.presentation.ui.theme.GlassBorder
+import com.karaoq.app.presentation.ui.theme.ObsidianDeep
+import com.karaoq.app.presentation.ui.theme.PitchMint
+import com.karaoq.app.presentation.ui.theme.SunsetCoral
+import com.karaoq.app.presentation.ui.theme.TextMuted
+import com.karaoq.app.presentation.ui.theme.TextPureWhite
 import com.karaoq.app.presentation.ui.theme.TextSecondary
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -108,9 +113,8 @@ fun HomeScreen(
     viewModel: HomeViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var showSettingsDialog by remember { mutableStateOf(false) }
 
-    // Se o modo Karaokê estiver ativo, renderiza a tela dedicada do Palco com contagem e microfone
+    // Se o modo Karaokê estiver ativo, renderiza a tela dedicada do Palco com microfone e pitch
     if (uiState.isKaraokeActive) {
         KaraokeScreen(
             modifier = modifier,
@@ -129,193 +133,263 @@ fun HomeScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = DarkBackground,
+        containerColor = ObsidianDeep,
         topBar = {
-            Column {
-                TopAppBar(
-                    title = {
+            TopAppBar(
+                title = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_karaoq_logo),
+                            contentDescription = "KaraoQ Logo",
+                            modifier = Modifier.size(36.dp)
+                        )
+                        Column {
+                            Image(
+                                painter = painterResource(id = R.drawable.ic_karaoq_logo_extenso),
+                                contentDescription = "KARAOQ",
+                                modifier = Modifier.height(20.dp)
+                            )
+                            Text(
+                                text = "AI Stem & Lyrics Sync",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = FlameOrange,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
+                },
+                actions = {
+                    // Indicador de status de conexão do Backend
+                    Box(
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(CardDarkSurface)
+                            .border(1.dp, GlassBorder, CircleShape)
+                            .padding(horizontal = 10.dp, vertical = 5.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(
-                                        Brush.linearGradient(
-                                            listOf(NeonCyan, NeonPink)
-                                        )
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.MusicNote,
-                                    contentDescription = null,
-                                    tint = DarkBackground,
-                                    modifier = Modifier.size(22.dp)
-                                )
-                            }
-                            Column {
-                                Text(
-                                    text = "KaraoQ",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = TextPrimary
-                                )
-                                Text(
-                                    text = "AI Stem & Lyrics Sync",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = NeonCyan,
-                                    fontSize = 11.sp
-                                )
-                            }
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = { showSettingsDialog = !showSettingsDialog }) {
-                            Icon(
-                                imageVector = Icons.Default.Settings,
-                                contentDescription = "Configurações do Servidor",
-                                tint = if (showSettingsDialog) NeonCyan else TextSecondary
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(PitchMint)
+                            )
+                            Text(
+                                text = "Online",
+                                color = PitchMint,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
                             )
                         }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = DarkSurface
-                    )
-                )
-
-                // Barra de Abas de Navegação (Criar Karaokê vs Músicas Salvas)
-                TabRow(
-                    selectedTabIndex = uiState.currentTab.ordinal,
-                    containerColor = DarkSurface,
-                    contentColor = NeonCyan,
-                    indicator = { tabPositions ->
-                        TabRowDefaults.SecondaryIndicator(
-                            modifier = Modifier.tabIndicatorOffset(tabPositions[uiState.currentTab.ordinal]),
-                            color = NeonCyan,
-                            height = 3.dp
-                        )
                     }
-                ) {
-                    Tab(
-                        selected = uiState.currentTab == NavigationTab.CREATE,
-                        onClick = { viewModel.switchTab(NavigationTab.CREATE) },
-                        text = {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Icon(imageVector = Icons.Default.Mic, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Text("Criar Karaokê", fontWeight = FontWeight.Bold)
-                            }
-                        },
-                        selectedContentColor = NeonCyan,
-                        unselectedContentColor = TextSecondary
-                    )
-
-                    Tab(
-                        selected = uiState.currentTab == NavigationTab.LIBRARY,
-                        onClick = { viewModel.switchTab(NavigationTab.LIBRARY) },
-                        text = {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Icon(imageVector = Icons.Default.LibraryMusic, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Text(
-                                    text = if (uiState.savedSongs.isNotEmpty()) "Salvas (${uiState.savedSongs.size})" else "Músicas Salvas",
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        },
-                        selectedContentColor = NeonCyan,
-                        unselectedContentColor = TextSecondary
-                    )
-                }
-            }
+                    Spacer(modifier = Modifier.width(12.dp))
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = ObsidianDeep
+                )
+            )
+        },
+        bottomBar = {
+            KaraoqBottomDock(
+                currentTab = uiState.currentTab,
+                onTabSelected = { viewModel.switchTab(it) }
+            )
         }
     ) { innerPadding ->
-        if (uiState.currentTab == NavigationTab.LIBRARY) {
-            SavedSongsScreen(
-                modifier = Modifier.padding(innerPadding),
-                savedSongs = uiState.savedSongs,
-                isLoading = uiState.isLoadingSavedSongs,
-                onRefresh = { viewModel.loadSavedSongs() },
-                onPlaySong = { viewModel.playSavedSong(it) },
-                onDeleteSong = { viewModel.deleteSavedSong(it) }
-            )
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // Seção de Configuração do Backend
-                AnimatedVisibility(visible = showSettingsDialog) {
-                    BackendSettingsCard(
-                        currentUrl = uiState.backendUrl,
-                        onSaveUrl = {
-                            viewModel.updateBackendUrl(it)
-                            showSettingsDialog = false
-                        }
-                    )
-                }
-
-                // Card 1: Seleção de Arquivo e Dados da Música (Artista + Título)
-                AudioAndLyricsSelectorCard(
-                    selectedFileName = uiState.selectedFileName,
-                    artist = uiState.artistInput,
-                    title = uiState.titleInput,
-                    lyrics = uiState.lyrics,
-                    isSearchingLyrics = uiState.isSearchingLyrics,
-                    isProcessing = uiState.separationState is SeparationUiState.Uploading ||
-                            uiState.separationState is SeparationUiState.Processing,
+        when (uiState.currentTab) {
+            NavigationTab.CREATE -> {
+                StudioTabContent(
+                    uiState = uiState,
+                    innerPadding = innerPadding,
                     onPickAudio = { audioPickerLauncher.launch("audio/*") },
                     onArtistChange = { viewModel.updateArtistInput(it) },
                     onTitleChange = { viewModel.updateTitleInput(it) },
                     onSearchLyrics = { viewModel.searchLyrics() },
-                    onStartSeparation = { viewModel.startSeparation() }
+                    onStartSeparation = { viewModel.startSeparation() },
+                    onTranscribeLyricsWithAi = { viewModel.transcribeWithAi() },
+                    onEnterKaraokeStage = { viewModel.enterStageFromCurrentTrack() },
+                    onTogglePlay = { viewModel.togglePlayPause() },
+                    onSwitchStem = { viewModel.switchStem(it) },
+                    onSeek = { viewModel.seekTo(it) }
                 )
+            }
 
-                // Card 2: Progresso e Status em Tempo Real
-                if (uiState.separationState !is SeparationUiState.Idle) {
-                    StatusProgressCard(
-                        separationState = uiState.separationState,
-                        errorMessage = uiState.errorMessage
-                    )
-                }
+            NavigationTab.LIBRARY -> {
+                SavedSongsScreen(
+                    modifier = Modifier.padding(innerPadding),
+                    savedSongs = uiState.savedSongs,
+                    isLoading = uiState.isLoadingSavedSongs,
+                    onRefresh = { viewModel.loadSavedSongs() },
+                    onPlaySong = { viewModel.playSavedSong(it) },
+                    onDeleteSong = { viewModel.deleteSavedSong(it) }
+                )
+            }
 
-                // Card 3: Player de Karaokê com Letra Sincronizada
-                if (uiState.separationState is SeparationUiState.Ready) {
-                    val readyState = uiState.separationState as SeparationUiState.Ready
-                    KaraokePlayerCard(
-                        trackTitle = readyState.track.title,
-                        activeStem = uiState.activeStem,
-                        isPlaying = uiState.isPlaying,
-                        currentPositionMs = uiState.currentPositionMs,
-                        durationMs = uiState.durationMs,
-                        lyrics = uiState.lyrics,
-                        canTranscribeAi = uiState.taskStatus?.taskId != null,
-                        isTranscribingLyrics = uiState.isTranscribingLyrics,
-                        transcriptionProgress = uiState.transcriptionProgress,
-                        partialTranscribedVerse = uiState.partialTranscribedVerse,
-                        onTranscribeLyricsWithAi = { viewModel.transcribeWithAi() },
-                        onEnterKaraokeStage = { viewModel.enterStageFromCurrentTrack() },
-                        onTogglePlay = { viewModel.togglePlayPause() },
-                        onSwitchStem = { viewModel.switchStem(it) },
-                        onSeek = { viewModel.seekTo(it) }
-                    )
-                }
+            NavigationTab.LEADERBOARD -> {
+                LeaderboardScreen(
+                    modifier = Modifier.padding(innerPadding),
+                    savedSongs = uiState.savedSongs,
+                    leaderboardEntries = uiState.leaderboardEntries,
+                    isLoading = uiState.isLoadingLeaderboard,
+                    onSelectSong = { viewModel.loadLeaderboard(it) },
+                    onRefresh = {
+                        val songId = uiState.activeKaraokeSong?.id
+                            ?: uiState.savedSongs.firstOrNull()?.id
+                        if (songId != null) {
+                            viewModel.loadLeaderboard(songId)
+                        }
+                    }
+                )
+            }
 
-                // Dica informativa
-                UsbDebuggingHintCard(backendUrl = uiState.backendUrl)
+            NavigationTab.SETTINGS -> {
+                SettingsScreen(
+                    modifier = Modifier.padding(innerPadding),
+                    currentBackendUrl = uiState.backendUrl,
+                    onSaveBackendUrl = { viewModel.updateBackendUrl(it) }
+                )
             }
         }
+    }
+}
+
+@Composable
+private fun StudioTabContent(
+    uiState: HomeUiState,
+    innerPadding: PaddingValues,
+    onPickAudio: () -> Unit,
+    onArtistChange: (String) -> Unit,
+    onTitleChange: (String) -> Unit,
+    onSearchLyrics: () -> Unit,
+    onStartSeparation: () -> Unit,
+    onTranscribeLyricsWithAi: () -> Unit,
+    onEnterKaraokeStage: () -> Unit,
+    onTogglePlay: () -> Unit,
+    onSwitchStem: (StemType) -> Unit,
+    onSeek: (Long) -> Unit
+) {
+    val isSeparating = uiState.separationState is SeparationUiState.Uploading ||
+            uiState.separationState is SeparationUiState.Processing
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(innerPadding)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp, vertical = 8.dp)
+            .padding(bottom = 96.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Banner Visual com Onda Sonora Animada 2D
+        GlassCard(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "Estúdio de Separação",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPureWhite
+                        )
+                        Text(
+                            text = if (isSeparating) "Processando faixas com Demucs IA..."
+                            else if (uiState.isPlaying) "Reproduzindo áudio isolado"
+                            else "Pronto para processar sua faixa",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = FlameOrange,
+                            fontSize = 11.sp
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(FlameOrange.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.GraphicEq,
+                            contentDescription = null,
+                            tint = FlameOrange,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+
+                // Visualizador de Ondas inspirado na logo KaraoQ
+                WaveformVisualizer(
+                    modifier = Modifier.fillMaxWidth(),
+                    height = 54.dp,
+                    isProcessing = isSeparating || uiState.isPlaying,
+                    primaryColor = FlameOrange,
+                    secondaryColor = SunsetCoral
+                )
+            }
+        }
+
+        // Card 1: Seleção de Arquivo e Dados da Música
+        AudioAndLyricsSelectorCard(
+            selectedFileName = uiState.selectedFileName,
+            artist = uiState.artistInput,
+            title = uiState.titleInput,
+            lyrics = uiState.lyrics,
+            isSearchingLyrics = uiState.isSearchingLyrics,
+            isProcessing = isSeparating,
+            onPickAudio = onPickAudio,
+            onArtistChange = onArtistChange,
+            onTitleChange = onTitleChange,
+            onSearchLyrics = onSearchLyrics,
+            onStartSeparation = onStartSeparation
+        )
+
+        // Card 2: Progresso e Status em Tempo Real
+        if (uiState.separationState !is SeparationUiState.Idle) {
+            StatusProgressCard(
+                separationState = uiState.separationState,
+                errorMessage = uiState.errorMessage
+            )
+        }
+
+        // Card 3: Player de Karaokê com Letra Sincronizada
+        if (uiState.separationState is SeparationUiState.Ready) {
+            val readyState = uiState.separationState as SeparationUiState.Ready
+            KaraokePlayerCard(
+                trackTitle = readyState.track.title,
+                activeStem = uiState.activeStem,
+                isPlaying = uiState.isPlaying,
+                currentPositionMs = uiState.currentPositionMs,
+                durationMs = uiState.durationMs,
+                lyrics = uiState.lyrics,
+                canTranscribeAi = uiState.taskStatus?.taskId != null,
+                isTranscribingLyrics = uiState.isTranscribingLyrics,
+                transcriptionProgress = uiState.transcriptionProgress,
+                partialTranscribedVerse = uiState.partialTranscribedVerse,
+                onTranscribeLyricsWithAi = onTranscribeLyricsWithAi,
+                onEnterKaraokeStage = onEnterKaraokeStage,
+                onTogglePlay = onTogglePlay,
+                onSwitchStem = onSwitchStem,
+                onSeek = onSeek
+            )
+        }
+
+        // Dica informativa
+        UsbDebuggingHintCard(backendUrl = uiState.backendUrl)
     }
 }
 
@@ -333,34 +407,39 @@ fun AudioAndLyricsSelectorCard(
     onSearchLyrics: () -> Unit,
     onStartSeparation: () -> Unit
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(1.dp, DarkSurfaceBorder, RoundedCornerShape(16.dp)),
-        colors = CardDefaults.cardColors(containerColor = DarkSurface),
-        shape = RoundedCornerShape(16.dp)
-    ) {
+    GlassCard(modifier = Modifier.fillMaxWidth()) {
         Column(
-            modifier = Modifier.padding(20.dp),
+            modifier = Modifier.padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(
-                text = "1. Escolha a Música & Letra",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.MusicNote,
+                    contentDescription = null,
+                    tint = FlameOrange,
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    text = "1. Escolha a Música & Letra",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPureWhite
+                )
+            }
 
             // Botão de seleção de arquivo
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(DarkSurfaceVariant)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(CardElevated)
                     .border(
                         width = 1.dp,
-                        brush = Brush.horizontalGradient(listOf(NeonCyan.copy(alpha = 0.5f), NeonPink.copy(alpha = 0.5f))),
-                        shape = RoundedCornerShape(12.dp)
+                        brush = Brush.horizontalGradient(listOf(FlameOrange.copy(alpha = 0.5f), SunsetCoral.copy(alpha = 0.3f))),
+                        shape = RoundedCornerShape(14.dp)
                     )
                     .clickable(enabled = !isProcessing) { onPickAudio() }
                     .padding(16.dp),
@@ -370,25 +449,34 @@ fun AudioAndLyricsSelectorCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Icon(
-                        imageVector = if (selectedFileName != null) Icons.Default.Audiotrack else Icons.Default.UploadFile,
-                        contentDescription = null,
-                        tint = if (selectedFileName != null) NeonCyan else TextSecondary,
-                        modifier = Modifier.size(32.dp)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(FlameOrange.copy(alpha = 0.15f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (selectedFileName != null) Icons.Rounded.Audiotrack else Icons.Rounded.UploadFile,
+                            contentDescription = null,
+                            tint = FlameOrange,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = selectedFileName ?: "Clique para selecionar arquivo de áudio",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = if (selectedFileName != null) FontWeight.Bold else FontWeight.Normal,
-                            color = if (selectedFileName != null) TextPrimary else TextSecondary,
+                            color = if (selectedFileName != null) TextPureWhite else TextSecondary,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
                             text = "Formatos suportados: .mp3, .wav, .m4a",
                             style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondary,
+                            color = TextMuted,
                             fontSize = 11.sp
                         )
                     }
@@ -398,22 +486,25 @@ fun AudioAndLyricsSelectorCard(
             // Campos de Artista e Título da Música
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 OutlinedTextField(
                     value = artist,
                     onValueChange = onArtistChange,
                     label = { Text("Cantor / Artista") },
                     leadingIcon = {
-                        Icon(imageVector = Icons.Default.Person, contentDescription = null, tint = NeonCyan, modifier = Modifier.size(18.dp))
+                        Icon(imageVector = Icons.Rounded.Person, contentDescription = null, tint = FlameOrange, modifier = Modifier.size(18.dp))
                     },
                     modifier = Modifier.weight(1f),
                     singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = NeonCyan,
-                        unfocusedBorderColor = DarkSurfaceBorder,
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary
+                        focusedBorderColor = FlameOrange,
+                        unfocusedBorderColor = GlassBorder,
+                        focusedTextColor = TextPureWhite,
+                        unfocusedTextColor = TextPureWhite,
+                        focusedLabelColor = FlameOrange,
+                        unfocusedLabelColor = TextMuted
                     )
                 )
 
@@ -422,15 +513,18 @@ fun AudioAndLyricsSelectorCard(
                     onValueChange = onTitleChange,
                     label = { Text("Nome da Música") },
                     leadingIcon = {
-                        Icon(imageVector = Icons.Default.MusicNote, contentDescription = null, tint = NeonPink, modifier = Modifier.size(18.dp))
+                        Icon(imageVector = Icons.Rounded.MusicNote, contentDescription = null, tint = SunsetCoral, modifier = Modifier.size(18.dp))
                     },
                     modifier = Modifier.weight(1f),
                     singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = NeonPink,
-                        unfocusedBorderColor = DarkSurfaceBorder,
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary
+                        focusedBorderColor = SunsetCoral,
+                        unfocusedBorderColor = GlassBorder,
+                        focusedTextColor = TextPureWhite,
+                        unfocusedTextColor = TextPureWhite,
+                        focusedLabelColor = SunsetCoral,
+                        unfocusedLabelColor = TextMuted
                     )
                 )
             }
@@ -444,20 +538,21 @@ fun AudioAndLyricsSelectorCard(
                 Button(
                     onClick = onSearchLyrics,
                     enabled = artist.isNotBlank() && title.isNotBlank() && !isSearchingLyrics,
-                    shape = RoundedCornerShape(10.dp),
+                    shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = DarkSurfaceVariant,
-                        contentColor = NeonCyan,
-                        disabledContainerColor = DarkSurfaceBorder,
-                        disabledContentColor = TextSecondary
-                    )
+                        containerColor = CardElevated,
+                        contentColor = FlameOrange,
+                        disabledContainerColor = CardDarkSurface,
+                        disabledContentColor = TextMuted
+                    ),
+                    modifier = Modifier.border(1.dp, GlassBorder, RoundedCornerShape(12.dp))
                 ) {
                     if (isSearchingLyrics) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = NeonCyan, strokeWidth = 2.dp)
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = FlameOrange, strokeWidth = 2.dp)
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Buscando...")
                     } else {
-                        Icon(imageVector = Icons.Default.Search, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(imageVector = Icons.Rounded.Search, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
                         Text("Buscar Letra", fontWeight = FontWeight.Bold)
                     }
@@ -469,11 +564,11 @@ fun AudioAndLyricsSelectorCard(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = ElectricGreen, modifier = Modifier.size(16.dp))
+                        Icon(imageVector = Icons.Rounded.CheckCircle, contentDescription = null, tint = PitchMint, modifier = Modifier.size(16.dp))
                         Text(
                             text = "${lyrics.lines.size} versos sincronizados",
                             style = MaterialTheme.typography.bodySmall,
-                            color = ElectricGreen,
+                            color = PitchMint,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -481,28 +576,13 @@ fun AudioAndLyricsSelectorCard(
             }
 
             // Botão Iniciar Separação
-            Button(
-                onClick = onStartSeparation,
+            KaraoqPillButton(
+                text = if (isProcessing) "Processando Separação..." else "Separar Áudio & Iniciar Karaokê",
+                icon = Icons.Rounded.GraphicEq,
                 enabled = selectedFileName != null && !isProcessing,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = NeonCyan,
-                    contentColor = DarkBackground,
-                    disabledContainerColor = DarkSurfaceBorder,
-                    disabledContentColor = TextSecondary
-                )
-            ) {
-                Icon(imageVector = Icons.Default.Mic, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = if (isProcessing) "Processando Separação..." else "Separar Áudio & Iniciar Karaokê",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold
-                )
-            }
+                onClick = onStartSeparation,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 }
@@ -512,15 +592,9 @@ fun StatusProgressCard(
     separationState: SeparationUiState,
     errorMessage: String?
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(1.dp, DarkSurfaceBorder, RoundedCornerShape(16.dp)),
-        colors = CardDefaults.cardColors(containerColor = DarkSurface),
-        shape = RoundedCornerShape(16.dp)
-    ) {
+    GlassCard(modifier = Modifier.fillMaxWidth()) {
         Column(
-            modifier = Modifier.padding(20.dp),
+            modifier = Modifier.padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Row(
@@ -532,7 +606,7 @@ fun StatusProgressCard(
                     text = "2. Status do Processamento",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary
+                    color = TextPureWhite
                 )
 
                 when (separationState) {
@@ -540,7 +614,7 @@ fun StatusProgressCard(
                         val infiniteTransition = rememberInfiniteTransition(label = "pulse")
                         val scale by infiniteTransition.animateFloat(
                             initialValue = 0.8f,
-                            targetValue = 1.2f,
+                            targetValue = 1.25f,
                             animationSpec = infiniteRepeatable(
                                 animation = tween(600, easing = FastOutSlowInEasing),
                                 repeatMode = RepeatMode.Reverse
@@ -552,20 +626,20 @@ fun StatusProgressCard(
                                 .size(12.dp)
                                 .scale(scale)
                                 .clip(CircleShape)
-                                .background(NeonCyan)
+                                .background(FlameOrange)
                         )
                     }
                     is SeparationUiState.Ready -> {
                         Icon(
-                            imageVector = Icons.Default.CheckCircle,
+                            imageVector = Icons.Rounded.CheckCircle,
                             contentDescription = null,
-                            tint = ElectricGreen,
+                            tint = PitchMint,
                             modifier = Modifier.size(20.dp)
                         )
                     }
                     is SeparationUiState.Error -> {
                         Icon(
-                            imageVector = Icons.Default.Error,
+                            imageVector = Icons.Rounded.Error,
                             contentDescription = null,
                             tint = AlertRed,
                             modifier = Modifier.size(20.dp)
@@ -589,11 +663,11 @@ fun StatusProgressCard(
                     .height(8.dp)
                     .clip(RoundedCornerShape(4.dp)),
                 color = when (separationState) {
-                    is SeparationUiState.Ready -> ElectricGreen
+                    is SeparationUiState.Ready -> PitchMint
                     is SeparationUiState.Error -> AlertRed
-                    else -> NeonCyan
+                    else -> FlameOrange
                 },
-                trackColor = DarkSurfaceBorder
+                trackColor = CardElevated
             )
 
             val statusMessage = when (separationState) {
@@ -633,19 +707,9 @@ fun KaraokePlayerCard(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         // Bloco de Controle de Reprodução
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(
-                    width = 1.dp,
-                    brush = Brush.linearGradient(listOf(NeonCyan, NeonPink)),
-                    shape = RoundedCornerShape(16.dp)
-                ),
-            colors = CardDefaults.cardColors(containerColor = DarkSurface),
-            shape = RoundedCornerShape(16.dp)
-        ) {
+        GlassCard(modifier = Modifier.fillMaxWidth()) {
             Column(
-                modifier = Modifier.padding(20.dp),
+                modifier = Modifier.padding(18.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Row(
@@ -654,71 +718,54 @@ fun KaraokePlayerCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "3. Modo Karaokê Player",
+                        text = "3. Modo Player",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = NeonCyan
+                        color = FlameOrange
                     )
 
-                    Button(
-                        onClick = onEnterKaraokeStage,
-                        colors = ButtonDefaults.buttonColors(containerColor = ElectricGreen),
-                        shape = RoundedCornerShape(10.dp),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 5.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Mic,
-                                contentDescription = null,
-                                tint = DarkBackground,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Text(
-                                text = "Ir para o Palco 🎤",
-                                color = DarkBackground,
-                                fontWeight = FontWeight.Black,
-                                fontSize = 11.sp
-                            )
-                        }
-                    }
+                    KaraoqPillButton(
+                        text = "Ir para o Palco",
+                        icon = Icons.Rounded.MicExternalOn,
+                        onClick = onEnterKaraokeStage
+                    )
                 }
 
                 Text(
                     text = trackTitle,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary,
+                    color = TextPureWhite,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
 
-                // Seletor de Faixa (Stem Switcher)
+                // Seletor de Faixa (Stem Switcher) - Zero emojis
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(DarkSurfaceVariant)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(CardElevated)
                         .padding(4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     StemSelectorButton(
                         modifier = Modifier.weight(1f),
-                        title = "🎸 Instrumental",
+                        title = "Instrumental",
                         subtitle = "Karaokê",
+                        icon = Icons.Rounded.GraphicEq,
                         isSelected = activeStem == StemType.INSTRUMENTAL,
-                        selectedColor = NeonPink,
+                        selectedColor = FlameOrange,
                         onClick = { onSwitchStem(StemType.INSTRUMENTAL) }
                     )
 
                     StemSelectorButton(
                         modifier = Modifier.weight(1f),
-                        title = "🎤 Apenas Voz",
+                        title = "Apenas Voz",
                         subtitle = "Acapella",
+                        icon = Icons.Rounded.Mic,
                         isSelected = activeStem == StemType.VOCALS,
-                        selectedColor = NeonCyan,
+                        selectedColor = SunsetCoral,
                         onClick = { onSwitchStem(StemType.VOCALS) }
                     )
                 }
@@ -737,9 +784,9 @@ fun KaraokePlayerCard(
                             }
                         },
                         colors = SliderDefaults.colors(
-                            thumbColor = NeonCyan,
-                            activeTrackColor = NeonCyan,
-                            inactiveTrackColor = DarkSurfaceBorder
+                            thumbColor = FlameOrange,
+                            activeTrackColor = FlameOrange,
+                            inactiveTrackColor = CardElevated
                         )
                     )
 
@@ -770,16 +817,16 @@ fun KaraokePlayerCard(
                             .size(64.dp)
                             .clip(CircleShape)
                             .background(
-                                Brush.linearGradient(listOf(NeonCyan, NeonPink))
+                                Brush.linearGradient(listOf(FlameOrange, SunsetCoral))
                             )
                             .clickable { onTogglePlay() },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                             contentDescription = if (isPlaying) "Pausar" else "Reproduzir",
-                            tint = DarkBackground,
-                            modifier = Modifier.size(36.dp)
+                            tint = TextPureWhite,
+                            modifier = Modifier.size(34.dp)
                         )
                     }
                 }
@@ -795,26 +842,20 @@ fun KaraokePlayerCard(
                 onSeek = onSeek
             )
         } else if (canTranscribeAi) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .border(1.dp, NeonPink.copy(alpha = 0.6f), RoundedCornerShape(14.dp)),
-                colors = CardDefaults.cardColors(containerColor = DarkSurfaceVariant),
-                shape = RoundedCornerShape(14.dp)
-            ) {
+            GlassCard(modifier = Modifier.fillMaxWidth()) {
                 Column(
-                    modifier = Modifier.padding(16.dp),
+                    modifier = Modifier.padding(18.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(imageVector = Icons.Default.AutoAwesome, contentDescription = null, tint = NeonPink)
+                        Icon(imageVector = Icons.Rounded.AutoAwesome, contentDescription = null, tint = SunsetCoral)
                         Text(
                             text = "Sem letra disponível para sincronizar",
                             fontWeight = FontWeight.Bold,
-                            color = TextPrimary,
+                            color = TextPureWhite,
                             style = MaterialTheme.typography.titleSmall
                         )
                     }
@@ -835,17 +876,17 @@ fun KaraokePlayerCard(
                                     .fillMaxWidth()
                                     .height(6.dp)
                                     .clip(RoundedCornerShape(3.dp)),
-                                color = NeonPink,
-                                trackColor = DarkSurfaceBorder
+                                color = SunsetCoral,
+                                trackColor = CardElevated
                             )
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Text(
-                                    text = if (partialTranscribedVerse.isNotBlank()) "♪ $partialTranscribedVerse" else "Transcrevendo voz com Whisper...",
+                                    text = if (partialTranscribedVerse.isNotBlank()) partialTranscribedVerse else "Transcrevendo voz com Whisper...",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = NeonCyan,
+                                    color = FlameOrange,
                                     fontSize = 11.sp,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
@@ -855,29 +896,20 @@ fun KaraokePlayerCard(
                                     text = "${transcriptionProgress.toInt()}%",
                                     style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.Bold,
-                                    color = NeonPink,
+                                    color = SunsetCoral,
                                     fontSize = 11.sp
                                 )
                             }
                         }
                     }
 
-                    Button(
-                        onClick = onTranscribeLyricsWithAi,
+                    KaraoqPillButton(
+                        text = if (isTranscribingLyrics) "Transcrevendo com Whisper (${transcriptionProgress.toInt()}%)..." else "Transcrever Letra com Whisper IA",
+                        icon = Icons.Rounded.AutoAwesome,
                         enabled = !isTranscribingLyrics,
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = NeonPink)
-                    ) {
-                        if (isTranscribingLyrics) {
-                            CircularProgressIndicator(modifier = Modifier.size(16.dp), color = TextPrimary, strokeWidth = 2.dp)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Transcrevendo com Whisper (${transcriptionProgress.toInt()}%)...", color = TextPrimary, fontSize = 12.sp)
-                        } else {
-                            Icon(imageVector = Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp), tint = TextPrimary)
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Transcrever Letra com Whisper IA (WebSocket) ✨", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        }
-                    }
+                        onClick = onTranscribeLyricsWithAi,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
         }
@@ -889,6 +921,7 @@ fun StemSelectorButton(
     modifier: Modifier = Modifier,
     title: String,
     subtitle: String,
+    icon: ImageVector,
     isSelected: Boolean,
     selectedColor: Color,
     onClick: () -> Unit
@@ -906,67 +939,29 @@ fun StemSelectorButton(
             .padding(vertical = 10.dp, horizontal = 8.dp),
         contentAlignment = Alignment.Center
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                color = if (isSelected) TextPrimary else TextSecondary
-            )
-            Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                fontSize = 10.sp,
-                color = if (isSelected) selectedColor else TextSecondary.copy(alpha = 0.7f)
-            )
-        }
-    }
-}
-
-@Composable
-fun BackendSettingsCard(
-    currentUrl: String,
-    onSaveUrl: (String) -> Unit
-) {
-    var textValue by remember(currentUrl) { mutableStateOf(currentUrl) }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(1.dp, NeonCyan.copy(alpha = 0.4f), RoundedCornerShape(16.dp)),
-        colors = CardDefaults.cardColors(containerColor = DarkSurface),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            Text(
-                text = "Endereço da API do Backend",
-                style = MaterialTheme.typography.titleSmall,
-                color = NeonCyan,
-                fontWeight = FontWeight.Bold
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (isSelected) selectedColor else TextMuted,
+                modifier = Modifier.size(16.dp)
             )
-
-            OutlinedTextField(
-                value = textValue,
-                onValueChange = { textValue = it },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = NeonCyan,
-                    unfocusedBorderColor = DarkSurfaceBorder,
-                    focusedTextColor = TextPrimary,
-                    unfocusedTextColor = TextPrimary
+            Column {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                    color = if (isSelected) TextPureWhite else TextSecondary
                 )
-            )
-
-            Button(
-                onClick = { onSaveUrl(textValue) },
-                modifier = Modifier.align(Alignment.End),
-                colors = ButtonDefaults.buttonColors(containerColor = NeonCyan, contentColor = DarkBackground)
-            ) {
-                Text("Salvar Endereço", fontWeight = FontWeight.Bold)
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontSize = 10.sp,
+                    color = if (isSelected) selectedColor else TextMuted
+                )
             }
         }
     }
@@ -974,24 +969,32 @@ fun BackendSettingsCard(
 
 @Composable
 fun UsbDebuggingHintCard(backendUrl: String) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(1.dp, DarkSurfaceBorder, RoundedCornerShape(16.dp)),
-        colors = CardDefaults.cardColors(containerColor = DarkSurfaceVariant.copy(alpha = 0.5f)),
-        shape = RoundedCornerShape(16.dp)
+    GlassCard(
+        modifier = Modifier.fillMaxWidth()
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Info,
+                    contentDescription = null,
+                    tint = FlameOrange,
+                    modifier = Modifier.size(16.dp)
+                )
+                Text(
+                    text = "Dica de KaraoQ",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = FlameOrange,
+                    fontWeight = FontWeight.Bold
+                )
+            }
             Text(
-                text = "💡 Dica de KaraoQ",
-                style = MaterialTheme.typography.labelLarge,
-                color = NeonCyan
-            )
-            Text(
-                text = "Servidor ativo: $backendUrl\n\nAo reproduzir a música, a letra sincronizada rola automaticamente e destaca o verso em tempo real. Você também pode tocar em qualquer frase para pular o áudio para aquele instante!",
+                text = "Servidor ativo: $backendUrl\n\nAo reproduzir a música, a letra sincronizada rola automaticamente e destaca o verso em tempo real. Toque em qualquer frase para saltar o áudio para aquele instante.",
                 style = MaterialTheme.typography.bodySmall,
                 color = TextSecondary,
                 lineHeight = 18.sp

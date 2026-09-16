@@ -10,20 +10,21 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 private val KaraoqColorScheme = darkColorScheme(
-    primary = NeonCyan,
-    onPrimary = DarkBackground,
-    secondary = NeonPink,
-    onSecondary = DarkBackground,
-    tertiary = NeonPurple,
-    background = DarkBackground,
-    onBackground = TextPrimary,
-    surface = DarkSurface,
-    onSurface = TextPrimary,
-    surfaceVariant = DarkSurfaceVariant,
+    primary = FlameOrange,
+    onPrimary = TextPureWhite,
+    secondary = PitchMint,
+    onSecondary = ObsidianDeep,
+    tertiary = AmberGlow,
+    background = ObsidianDeep,
+    onBackground = TextPureWhite,
+    surface = CardDarkSurface,
+    onSurface = TextPureWhite,
+    surfaceVariant = CardElevated,
     onSurfaceVariant = TextSecondary,
-    outline = DarkSurfaceBorder,
+    outline = GlassBorder,
     error = AlertRed
 )
+
 
 @Composable
 fun KaraoqTheme(

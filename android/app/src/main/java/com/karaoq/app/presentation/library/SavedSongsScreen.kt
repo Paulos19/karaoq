@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,16 +20,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.LibraryMusic
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Description
+import androidx.compose.material.icons.rounded.GraphicEq
+import androidx.compose.material.icons.rounded.LibraryMusic
+import androidx.compose.material.icons.rounded.Mic
+import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,21 +38,25 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.karaoq.app.domain.model.SavedSong
+import com.karaoq.app.presentation.components.GlassCard
 import com.karaoq.app.presentation.ui.theme.AlertRed
-import com.karaoq.app.presentation.ui.theme.DarkBackground
-import com.karaoq.app.presentation.ui.theme.DarkSurface
-import com.karaoq.app.presentation.ui.theme.DarkSurfaceBorder
-import com.karaoq.app.presentation.ui.theme.DarkSurfaceVariant
-import com.karaoq.app.presentation.ui.theme.ElectricGreen
-import com.karaoq.app.presentation.ui.theme.NeonCyan
-import com.karaoq.app.presentation.ui.theme.NeonPink
-import com.karaoq.app.presentation.ui.theme.NeonPurple
-import com.karaoq.app.presentation.ui.theme.TextPrimary
+import com.karaoq.app.presentation.ui.theme.CardDarkSurface
+import com.karaoq.app.presentation.ui.theme.CardElevated
+import com.karaoq.app.presentation.ui.theme.FlameOrange
+import com.karaoq.app.presentation.ui.theme.FlameOrangeLight
+import com.karaoq.app.presentation.ui.theme.GlassBorder
+import com.karaoq.app.presentation.ui.theme.ObsidianDeep
+import com.karaoq.app.presentation.ui.theme.PitchMint
+import com.karaoq.app.presentation.ui.theme.SunsetCoral
+import com.karaoq.app.presentation.ui.theme.TextMuted
+import com.karaoq.app.presentation.ui.theme.TextPureWhite
 import com.karaoq.app.presentation.ui.theme.TextSecondary
 
 @Composable
@@ -68,7 +71,7 @@ fun SavedSongsScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .padding(horizontal = 20.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Cabeçalho da Biblioteca
@@ -79,45 +82,53 @@ fun SavedSongsScreen(
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Box(
                     modifier = Modifier
-                        .size(36.dp)
-                        .clip(RoundedCornerShape(8.dp))
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(14.dp))
                         .background(
-                            Brush.linearGradient(listOf(NeonPurple, NeonPink))
+                            Brush.linearGradient(listOf(FlameOrange, SunsetCoral))
                         ),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.LibraryMusic,
+                        imageVector = Icons.Rounded.LibraryMusic,
                         contentDescription = null,
-                        tint = DarkBackground,
-                        modifier = Modifier.size(20.dp)
+                        tint = TextPureWhite,
+                        modifier = Modifier.size(24.dp)
                     )
                 }
                 Column {
                     Text(
-                        text = "Músicas Salvas",
+                        text = "Biblioteca",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.ExtraBold,
-                        color = TextPrimary
+                        color = TextPureWhite
                     )
                     Text(
-                        text = "${savedSongs.size} faixas prontas no Storage",
+                        text = "${savedSongs.size} faixas sincronizadas",
                         style = MaterialTheme.typography.bodySmall,
-                        color = NeonCyan,
-                        fontSize = 12.sp
+                        color = FlameOrange,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
             }
 
-            IconButton(onClick = onRefresh) {
+            IconButton(
+                onClick = onRefresh,
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(CardDarkSurface)
+                    .border(1.dp, GlassBorder, CircleShape)
+            ) {
                 Icon(
-                    imageVector = Icons.Default.Refresh,
+                    imageVector = Icons.Rounded.Refresh,
                     contentDescription = "Atualizar lista",
-                    tint = NeonCyan
+                    tint = FlameOrange,
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
@@ -126,50 +137,59 @@ fun SavedSongsScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(200.dp),
+                    .height(260.dp),
                 contentAlignment = Alignment.Center
             ) {
-                CircularProgressIndicator(color = NeonCyan)
+                CircularProgressIndicator(color = FlameOrange, strokeWidth = 3.dp)
             }
         } else if (savedSongs.isEmpty()) {
-            Box(
+            GlassCard(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(260.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(DarkSurface)
-                    .border(1.dp, DarkSurfaceBorder, RoundedCornerShape(16.dp))
-                    .padding(24.dp),
-                contentAlignment = Alignment.Center
+                    .padding(top = 20.dp)
             ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    modifier = Modifier.padding(24.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.MusicNote,
-                        contentDescription = null,
-                        tint = TextSecondary,
-                        modifier = Modifier.size(48.dp)
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(64.dp)
+                            .clip(CircleShape)
+                            .background(FlameOrange.copy(alpha = 0.12f))
+                            .border(1.dp, FlameOrange.copy(alpha = 0.3f), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.MusicNote,
+                            contentDescription = null,
+                            tint = FlameOrange,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+
                     Text(
                         text = "Nenhuma música salva ainda",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary
+                        color = TextPureWhite
                     )
+
                     Text(
-                        text = "Separe uma música na aba 'Criar Karaokê' e salve para vê-la aqui e tocar quando quiser!",
+                        text = "Separe uma música na aba Estúdio para isolar os stems e salvar na sua biblioteca permanente.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = TextSecondary,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        lineHeight = 20.sp
                     )
                 }
             }
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(bottom = 96.dp)
             ) {
                 items(savedSongs, key = { it.id }) { song ->
                     SavedSongCard(
@@ -189,37 +209,34 @@ fun SavedSongCard(
     onPlay: () -> Unit,
     onDelete: () -> Unit
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .clickable { onPlay() }
-            .border(1.dp, DarkSurfaceBorder, RoundedCornerShape(14.dp)),
-        colors = CardDefaults.cardColors(containerColor = DarkSurface),
-        shape = RoundedCornerShape(14.dp)
+    val hasLyrics = song.lyrics?.lines?.isNotEmpty() == true
+
+    GlassCard(
+        modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .clickable { onPlay() }
                 .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Capa estilizada
+            // Capa estilizada com gradiente Flame
             Box(
                 modifier = Modifier
                     .size(52.dp)
-                    .clip(RoundedCornerShape(10.dp))
+                    .clip(RoundedCornerShape(12.dp))
                     .background(
-                        Brush.linearGradient(listOf(NeonCyan.copy(alpha = 0.8f), NeonPink.copy(alpha = 0.8f)))
+                        Brush.linearGradient(listOf(FlameOrange, SunsetCoral))
                     ),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.MusicNote,
+                    imageVector = Icons.Rounded.GraphicEq,
                     contentDescription = null,
-                    tint = DarkBackground,
-                    modifier = Modifier.size(28.dp)
+                    tint = TextPureWhite,
+                    modifier = Modifier.size(26.dp)
                 )
             }
 
@@ -232,7 +249,7 @@ fun SavedSongCard(
                     text = song.title,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary,
+                    color = TextPureWhite,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -244,17 +261,43 @@ fun SavedSongCard(
                     overflow = TextOverflow.Ellipsis
                 )
 
+                // Chips de status com ícones vetoriais
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    val hasLyrics = song.lyrics?.lines?.isNotEmpty() == true
-                    Text(
-                        text = if (hasLyrics) "🎤 Com Letra" else "🎸 Instrumental",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (hasLyrics) ElectricGreen else NeonCyan,
-                        fontSize = 11.sp
-                    )
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(
+                                if (hasLyrics) PitchMint.copy(alpha = 0.15f) else CardElevated
+                            )
+                            .border(
+                                1.dp,
+                                if (hasLyrics) PitchMint.copy(alpha = 0.4f) else GlassBorder,
+                                RoundedCornerShape(6.dp)
+                            )
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (hasLyrics) Icons.Rounded.Description else Icons.Rounded.MusicNote,
+                                contentDescription = null,
+                                tint = if (hasLyrics) PitchMint else TextMuted,
+                                modifier = Modifier.size(11.dp)
+                            )
+                            Text(
+                                text = if (hasLyrics) "Com Letra" else "Instrumental",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (hasLyrics) PitchMint else TextMuted,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    }
                 }
             }
 
@@ -265,12 +308,12 @@ fun SavedSongCard(
             ) {
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(10.dp))
+                        .clip(RoundedCornerShape(12.dp))
                         .background(
-                            Brush.horizontalGradient(listOf(NeonCyan, NeonPink))
+                            Brush.horizontalGradient(listOf(FlameOrange, FlameOrangeLight))
                         )
                         .clickable { onPlay() }
-                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Row(
@@ -278,26 +321,29 @@ fun SavedSongCard(
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Mic,
-                            contentDescription = "Cantar no Palco Karaokê",
-                            tint = DarkBackground,
-                            modifier = Modifier.size(16.dp)
+                            imageVector = Icons.Rounded.Mic,
+                            contentDescription = "Cantar no Palco",
+                            tint = TextPureWhite,
+                            modifier = Modifier.size(15.dp)
                         )
                         Text(
                             text = "Cantar",
                             fontWeight = FontWeight.Bold,
                             fontSize = 12.sp,
-                            color = DarkBackground
+                            color = TextPureWhite
                         )
                     }
                 }
 
-                IconButton(onClick = onDelete) {
+                IconButton(
+                    onClick = onDelete,
+                    modifier = Modifier.size(36.dp)
+                ) {
                     Icon(
-                        imageVector = Icons.Default.Delete,
+                        imageVector = Icons.Rounded.Delete,
                         contentDescription = "Excluir Música",
-                        tint = AlertRed.copy(alpha = 0.8f),
-                        modifier = Modifier.size(22.dp)
+                        tint = AlertRed.copy(alpha = 0.7f),
+                        modifier = Modifier.size(18.dp)
                     )
                 }
             }

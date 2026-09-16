@@ -4,18 +4,19 @@ import com.karaoq.app.data.audio.PitchResult
 import kotlin.math.abs
 
 enum class ScoreRank(val symbol: String, val title: String, val minScore: Int) {
-    S("S", "Superstar do KaraoQ! 👑", 8800),
-    A("A", "Voz de Ouro! 🌟", 7200),
-    B("B", "Belo Show! 🎤", 5000),
-    C("C", "Bom Ensaio! Continue praticando 🎶", 0)
+    S("S", "Superstar do KaraoQ", 8800),
+    A("A", "Voz de Ouro", 7200),
+    B("B", "Belo Show", 5000),
+    C("C", "Bom Ensaio - Continue Praticando", 0)
 }
 
 enum class VocalFeedback(val text: String, val points: Int) {
-    PERFECT("Perfeito! ✨", 100),
-    GOOD("Muito Bom! 👍", 65),
-    OK("Quase lá! 🎵", 35),
+    PERFECT("Perfeito!", 100),
+    GOOD("Muito Bom!", 65),
+    OK("Quase lá!", 35),
     NONE("", 0)
 }
+
 
 data class ScoreFrameResult(
     val score: Int,

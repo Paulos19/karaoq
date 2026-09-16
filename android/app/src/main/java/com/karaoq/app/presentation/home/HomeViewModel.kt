@@ -797,8 +797,8 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         return Intent(Intent.ACTION_SEND).apply {
             type = "audio/wav"
             putExtra(Intent.EXTRA_STREAM, uri)
-            putExtra(Intent.EXTRA_SUBJECT, "Minha performance no KaraoQ!")
-            putExtra(Intent.EXTRA_TEXT, "Ouça como cantei a música '$songTitle' no KaraoQ! 🎤🔥")
+            putExtra(Intent.EXTRA_SUBJECT, "Minha performance no KaraoQ")
+            putExtra(Intent.EXTRA_TEXT, "Ouça como cantei a música '$songTitle' no KaraoQ!")
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
     }

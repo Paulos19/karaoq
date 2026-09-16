@@ -76,6 +76,9 @@ data class SongCreatePayloadDto(
 )
 
 enum class NavigationTab(val title: String) {
-    CREATE("Criar Karaokê"),
-    LIBRARY("Músicas Salvas")
+    CREATE("Estúdio"),
+    LIBRARY("Biblioteca"),
+    LEADERBOARD("Ranking"),
+    SETTINGS("Ajustes")
 }
+
