@@ -1,55 +1,62 @@
 package com.karaoq.app.presentation.karaoke
 
 import android.Manifest
+import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.FastForward
-import androidx.compose.material.icons.filled.Leaderboard
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.MicOff
-import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.rounded.FastForward
+import androidx.compose.material.icons.rounded.GraphicEq
+import androidx.compose.material.icons.rounded.Mic
+import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -57,7 +64,6 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -70,6 +76,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -80,30 +87,31 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import android.content.Intent
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import com.karaoq.app.presentation.components.KaraoqMedalBadge
 import com.karaoq.app.data.model.LeaderboardEntry
 import com.karaoq.app.domain.audio.KaraokeScoreSummary
+import com.karaoq.app.presentation.components.GlassCard
+import com.karaoq.app.presentation.components.KaraoqMedalBadge
+import com.karaoq.app.presentation.components.KaraoqPillButton
 import com.karaoq.app.presentation.components.LyricsView
 import com.karaoq.app.presentation.home.HomeUiState
 import com.karaoq.app.presentation.home.HomeViewModel
 import com.karaoq.app.presentation.ui.theme.AlertRed
-import com.karaoq.app.presentation.ui.theme.DarkBackground
-import com.karaoq.app.presentation.ui.theme.DarkSurface
-import com.karaoq.app.presentation.ui.theme.DarkSurfaceBorder
-import com.karaoq.app.presentation.ui.theme.DarkSurfaceVariant
-import com.karaoq.app.presentation.ui.theme.ElectricGreen
-import com.karaoq.app.presentation.ui.theme.NeonCyan
-import com.karaoq.app.presentation.ui.theme.NeonPink
-import com.karaoq.app.presentation.ui.theme.NeonPurple
-import com.karaoq.app.presentation.ui.theme.TextPrimary
+import com.karaoq.app.presentation.ui.theme.AmberGlow
+import com.karaoq.app.presentation.ui.theme.CardDarkSurface
+import com.karaoq.app.presentation.ui.theme.CardElevated
+import com.karaoq.app.presentation.ui.theme.FlameOrange
+import com.karaoq.app.presentation.ui.theme.FlameOrangeLight
+import com.karaoq.app.presentation.ui.theme.GlassBorder
+import com.karaoq.app.presentation.ui.theme.GoldMedal
+import com.karaoq.app.presentation.ui.theme.ObsidianDeep
+import com.karaoq.app.presentation.ui.theme.PitchMint
+import com.karaoq.app.presentation.ui.theme.SunsetCoral
+import com.karaoq.app.presentation.ui.theme.TextMuted
+import com.karaoq.app.presentation.ui.theme.TextPureWhite
 import com.karaoq.app.presentation.ui.theme.TextSecondary
 import java.io.File
 import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KaraokeScreen(
     modifier: Modifier = Modifier,
@@ -125,142 +133,135 @@ fun KaraokeScreen(
         }
     }
 
-    Surface(
-        modifier = modifier.fillMaxSize(),
-        color = DarkBackground
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(ObsidianDeep)
     ) {
-        Column(
+        // 1. Palco Principal: Área de Letras Imersiva (O Cântico)
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // 1. Barra Superior do Palco
-            KaraokeTopBar(
-                title = song?.title ?: "KaraoQ",
-                artist = song?.artist ?: "",
-                isVocalGuide = uiState.isVocalGuideActive,
-                onToggleVocalGuide = { viewModel.toggleVocalGuide() },
-                onExit = onExit
-            )
-
-            // 2. Placar Dinâmico & Indicador de Afinação em Tempo Real
-            KaraokeLiveScoreBar(
-                score = uiState.vocalScore,
-                combo = uiState.comboCount,
-                multiplier = uiState.comboMultiplier,
-                note = uiState.currentPitchNote,
-                isVoicePitched = uiState.isVoicePitched,
-                feedback = uiState.lastFeedbackText
-            )
-
-            // 3. Temporizador Inicial Regressivo de 5 Segundos
-            if (uiState.isCountdownRunning) {
-                KaraokeCountdownBanner(
-                    secondsRemaining = uiState.countdownRemaining,
-                    onSkip = { viewModel.skipCountdown() }
+            val lyrics = uiState.lyrics
+            if (lyrics != null && lyrics.lines.isNotEmpty()) {
+                LyricsView(
+                    modifier = Modifier.fillMaxSize(),
+                    lyrics = lyrics,
+                    currentPositionMs = uiState.currentPositionMs,
+                    isStageMode = true,
+                    onSeek = { viewModel.seekTo(it) }
                 )
-            }
-
-            // 4. Cartão do Microfone e Afinador
-            MicrophoneTunerCard(
-                isMicActive = uiState.isMicActive,
-                hasPermission = viewModel.microphoneManager.hasPermission(),
-                amplitude = uiState.micAmplitude,
-                pitchHz = uiState.currentPitchHz,
-                pitchNote = uiState.currentPitchNote,
-                centsDeviation = uiState.centsDeviation,
-                isPitched = uiState.isVoicePitched,
-                onToggleMic = { viewModel.toggleMic() },
-                onRequestPermission = { micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO) }
-            )
-
-            // 5. Área Central de Letras (Teleprompter)
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-            ) {
-                val lyrics = uiState.lyrics
-                if (lyrics != null && lyrics.lines.isNotEmpty()) {
-                    LyricsView(
-                        modifier = Modifier.fillMaxSize(),
-                        lyrics = lyrics,
-                        currentPositionMs = uiState.currentPositionMs,
-                        isStageMode = true,
-                        onSeek = { viewModel.seekTo(it) }
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(DarkSurface)
-                            .border(1.dp, DarkSurfaceBorder, RoundedCornerShape(16.dp))
-                            .padding(24.dp),
-                        contentAlignment = Alignment.Center
+            } else {
+                // Estado sem letra LRC: Guia para playback com Whisper AI
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        Box(
+                            modifier = Modifier
+                                .size(64.dp)
+                                .clip(CircleShape)
+                                .background(FlameOrange.copy(alpha = 0.15f))
+                                .border(1.dp, FlameOrange.copy(alpha = 0.4f), CircleShape),
+                            contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Default.MusicNote,
+                                imageVector = Icons.Rounded.GraphicEq,
                                 contentDescription = null,
-                                tint = NeonCyan,
-                                modifier = Modifier.size(54.dp)
+                                tint = FlameOrange,
+                                modifier = Modifier.size(32.dp)
                             )
-                            Text(
-                                text = "Aproveite o Playback Instrumental!",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = TextPrimary,
-                                textAlign = TextAlign.Center
-                            )
-                            Text(
-                                text = "Solte a sua voz! O medidor de afinação e a pontuação já estão ativos captando suas notas.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = TextSecondary,
-                                textAlign = TextAlign.Center
-                            )
+                        }
 
-                            if (uiState.taskStatus?.taskId != null) {
-                                Button(
-                                    onClick = { viewModel.transcribeWithAi() },
-                                    enabled = !uiState.isTranscribingLyrics,
-                                    colors = ButtonDefaults.buttonColors(containerColor = NeonPink),
-                                    shape = RoundedCornerShape(10.dp)
-                                ) {
-                                    if (uiState.isTranscribingLyrics) {
-                                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = TextPrimary, strokeWidth = 2.dp)
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        val progressText = if (uiState.transcriptionProgress > 0) " (${uiState.transcriptionProgress.toInt()}%)" else ""
-                                        Text("Whisper IA: ${uiState.partialTranscribedVerse.ifBlank { "Transcrevendo..." }}$progressText", color = TextPrimary, fontSize = 12.sp)
-                                    } else {
-                                        Icon(imageVector = Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp), tint = TextPrimary)
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text("Gerar Letra com Whisper IA", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                                    }
-                                }
-                            }
+                        Text(
+                            text = "Playback Instrumental Ativo",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPureWhite,
+                            textAlign = TextAlign.Center
+                        )
+
+                        Text(
+                            text = "Solte a sua voz! O microfone e o medidor de afinação estão captando suas notas ao vivo.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TextSecondary,
+                            textAlign = TextAlign.Center,
+                            lineHeight = 20.sp
+                        )
+
+                        if (uiState.taskStatus?.taskId != null) {
+                            KaraoqPillButton(
+                                text = if (uiState.isTranscribingLyrics) "Transcrevendo com Whisper..." else "Gerar Letra com Whisper IA",
+                                icon = Icons.Rounded.AutoAwesome,
+                                enabled = !uiState.isTranscribingLyrics,
+                                onClick = { viewModel.transcribeWithAi() }
+                            )
                         }
                     }
                 }
             }
+        }
 
-            // 6. Controles de Reprodução, Seek e Botão Finalizar
-            KaraokeControlsBar(
-                isPlaying = uiState.isPlaying,
-                currentPositionMs = uiState.currentPositionMs,
-                durationMs = uiState.durationMs,
-                onTogglePlay = { viewModel.togglePlayPause() },
-                onSeek = { viewModel.seekTo(it) },
-                onRestart = { viewModel.restartKaraoke() },
-                onFinishEarly = { viewModel.finishKaraokeManually() }
+        // 2. Barra Superior Minimalista (com statusBarsPadding para nunca cortar no BlueStacks)
+        GeminiStageTopBar(
+            title = song?.title ?: "KaraoQ Stage",
+            artist = song?.artist.orEmpty(),
+            score = uiState.vocalScore,
+            comboMultiplier = uiState.comboMultiplier,
+            isVocalGuide = uiState.isVocalGuideActive,
+            onToggleVocalGuide = { viewModel.toggleVocalGuide() },
+            onExit = onExit,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .statusBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+        )
+
+        // 3. Lead-in Countdown Flutuante (quando isCountdownRunning)
+        AnimatedVisibility(
+            visible = uiState.isCountdownRunning,
+            enter = fadeIn() + slideInVertically(initialOffsetY = { -it }),
+            exit = fadeOut() + slideOutVertically(targetOffsetY = { -it }),
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .statusBarsPadding()
+                .padding(top = 64.dp, start = 20.dp, end = 20.dp)
+        ) {
+            GeminiCountdownPill(
+                secondsRemaining = uiState.countdownRemaining,
+                onSkip = { viewModel.skipCountdown() }
             )
         }
 
-        // 7. Modal de Fim de Música e Placar Final
+        // 4. Gemini Floating Bottom Dock (Controles + WaveProgress Voice Detector)
+        GeminiStageDock(
+            isPlaying = uiState.isPlaying,
+            currentPositionMs = uiState.currentPositionMs,
+            durationMs = uiState.durationMs,
+            micAmplitude = uiState.micAmplitude,
+            pitchNote = uiState.currentPitchNote,
+            isVoiceDetected = uiState.isVoicePitched || uiState.micAmplitude > 0.08f,
+            isMicActive = uiState.isMicActive,
+            hasMicPermission = viewModel.microphoneManager.hasPermission(),
+            onTogglePlay = { viewModel.togglePlayPause() },
+            onSeek = { viewModel.seekTo(it) },
+            onRestart = { viewModel.restartKaraoke() },
+            onFinishShow = { viewModel.finishKaraokeManually() },
+            onRequestMicPermission = { micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO) },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 14.dp)
+        )
+
+        // 5. Modal de Fim de Música e Placar Final
         if (uiState.isScoreModalVisible && uiState.scoreSummary != null) {
             val context = LocalContext.current
             KaraokeResultDialog(
@@ -290,149 +291,43 @@ fun KaraokeScreen(
     }
 }
 
+/**
+ * TopBar limpa inspirada no Gemini com proteção contra corte de status bar no BlueStacks.
+ */
 @Composable
-fun KaraokeLiveScoreBar(
-    score: Int,
-    combo: Int,
-    multiplier: Int,
-    note: String,
-    isVoicePitched: Boolean,
-    feedback: String
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(1.dp, DarkSurfaceBorder, RoundedCornerShape(14.dp)),
-        colors = CardDefaults.cardColors(containerColor = DarkSurface),
-        shape = RoundedCornerShape(14.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            // Pontuação Acumulada
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.EmojiEvents,
-                    contentDescription = null,
-                    tint = ElectricGreen,
-                    modifier = Modifier.size(20.dp)
-                )
-                Text(
-                    text = String.format(Locale.getDefault(), "%,d", score),
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Black,
-                    color = TextPrimary
-                )
-                Text(
-                    text = "pts",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextSecondary
-                )
-            }
-
-            // Nota Cantada no Momento
-            if (isVoicePitched && note.isNotBlank()) {
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(NeonCyan.copy(alpha = 0.2f))
-                        .border(1.dp, NeonCyan, RoundedCornerShape(8.dp))
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.MusicNote,
-                        contentDescription = null,
-                        tint = NeonCyan,
-                        modifier = Modifier.size(13.dp)
-                    )
-                    Text(
-                        text = note,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = NeonCyan
-                    )
-                }
-            } else if (feedback.isNotBlank()) {
-                Text(
-                    text = feedback,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = NeonPink
-                )
-            }
-
-            // Multiplicador de Combo
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                if (combo > 0) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(
-                                if (multiplier >= 3) {
-                                    Brush.horizontalGradient(listOf(NeonPink, NeonPurple))
-                                } else {
-                                    Brush.horizontalGradient(listOf(ElectricGreen, NeonCyan))
-                                }
-                            )
-                            .padding(horizontal = 8.dp, vertical = 3.dp)
-                    ) {
-                        Text(
-                            text = "COMBO x$multiplier",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Black,
-                            color = DarkBackground
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun KaraokeTopBar(
+private fun GeminiStageTopBar(
     title: String,
     artist: String,
+    score: Int,
+    comboMultiplier: Int,
     isVocalGuide: Boolean,
     onToggleVocalGuide: () -> Unit,
-    onExit: () -> Unit
+    onExit: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 4.dp),
+        modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
+        // Botão Voltar circular estilo Gemini
         IconButton(
             onClick = onExit,
             modifier = Modifier
-                .size(38.dp)
+                .size(40.dp)
                 .clip(CircleShape)
-                .background(DarkSurface)
-                .border(1.dp, DarkSurfaceBorder, CircleShape)
+                .background(CardDarkSurface.copy(alpha = 0.9f))
+                .border(1.dp, GlassBorder, CircleShape)
         ) {
             Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Voltar",
-                tint = NeonCyan,
+                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                contentDescription = "Sair do Palco",
+                tint = TextPureWhite,
                 modifier = Modifier.size(20.dp)
             )
         }
 
+        // Título e Artista centralizados
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -441,245 +336,102 @@ fun KaraokeTopBar(
         ) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleSmall,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = TextPrimary,
+                color = TextPureWhite,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                text = artist.ifBlank { "KaraoQ Stage" },
+                text = artist.ifBlank { "KaraoQ Live" },
                 style = MaterialTheme.typography.bodySmall,
-                color = NeonCyan,
+                color = FlameOrange,
                 fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
         }
 
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(16.dp))
-                .background(
-                    if (isVocalGuide) {
-                        Brush.horizontalGradient(listOf(NeonPink, NeonPurple))
-                    } else {
-                        Brush.horizontalGradient(listOf(DarkSurface, DarkSurface))
-                    }
-                )
-                .border(
-                    width = 1.dp,
-                    color = if (isVocalGuide) NeonPink else DarkSurfaceBorder,
-                    shape = RoundedCornerShape(16.dp)
-                )
-                .clickable { onToggleVocalGuide() }
-                .padding(horizontal = 8.dp, vertical = 5.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Icon(
-                    imageVector = if (isVocalGuide) Icons.Default.Person else Icons.Default.MusicNote,
-                    contentDescription = null,
-                    tint = if (isVocalGuide) TextPrimary else TextSecondary,
-                    modifier = Modifier.size(14.dp)
-                )
-                Text(
-                    text = if (isVocalGuide) "Voz Guia: ON" else "Playback",
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isVocalGuide) TextPrimary else TextSecondary
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun KaraokeCountdownBanner(
-    secondsRemaining: Int,
-    onSkip: () -> Unit
-) {
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
-    val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 0.95f,
-        targetValue = 1.05f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(400, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "scale"
-    )
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(
-                width = 2.dp,
-                brush = Brush.horizontalGradient(listOf(NeonPink, NeonCyan, ElectricGreen)),
-                shape = RoundedCornerShape(14.dp)
-            ),
-        colors = CardDefaults.cardColors(containerColor = DarkSurface),
-        shape = RoundedCornerShape(14.dp)
-    ) {
+        // Ações do Topo: Switch de Guia Vocal e Placar ao Vivo
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(46.dp)
-                        .scale(pulseScale)
-                        .clip(CircleShape)
-                        .background(
-                            Brush.radialGradient(listOf(NeonPink, NeonPurple))
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "$secondsRemaining",
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Black,
-                        color = TextPrimary
+            // Chip de Guia Vocal
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(
+                        if (isVocalGuide) SunsetCoral.copy(alpha = 0.25f) else CardDarkSurface.copy(alpha = 0.9f)
                     )
-                }
-
-                Column {
-                    Text(
-                        text = "Prepare sua voz!",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = TextPrimary
+                    .border(
+                        1.dp,
+                        if (isVocalGuide) SunsetCoral else GlassBorder,
+                        RoundedCornerShape(14.dp)
                     )
-                    Text(
-                        text = "Entrada em $secondsRemaining segundo${if (secondsRemaining > 1) "s" else ""}...",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = NeonCyan,
-                        fontSize = 11.sp
-                    )
-                }
-            }
-
-            Button(
-                onClick = onSkip,
-                colors = ButtonDefaults.buttonColors(containerColor = ElectricGreen),
-                shape = RoundedCornerShape(10.dp),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                    .clickable { onToggleVocalGuide() }
+                    .padding(horizontal = 8.dp, vertical = 6.dp)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.FastForward,
-                        contentDescription = "Pular",
-                        tint = DarkBackground,
-                        modifier = Modifier.size(14.dp)
+                        imageVector = if (isVocalGuide) Icons.Rounded.Person else Icons.Rounded.GraphicEq,
+                        contentDescription = null,
+                        tint = if (isVocalGuide) SunsetCoral else TextMuted,
+                        modifier = Modifier.size(13.dp)
                     )
                     Text(
-                        text = "Pular",
-                        color = DarkBackground,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp
+                        text = if (isVocalGuide) "Guia" else "Playback",
+                        color = if (isVocalGuide) TextPureWhite else TextSecondary,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
-        }
-    }
-}
 
-@Composable
-fun MicrophoneTunerCard(
-    isMicActive: Boolean,
-    hasPermission: Boolean,
-    amplitude: Float,
-    pitchHz: Float,
-    pitchNote: String,
-    centsDeviation: Int,
-    isPitched: Boolean,
-    onToggleMic: () -> Unit,
-    onRequestPermission: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(1.dp, DarkSurfaceBorder, RoundedCornerShape(14.dp)),
-        colors = CardDefaults.cardColors(containerColor = DarkSurface),
-        shape = RoundedCornerShape(14.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            // Chip do Placar ao Vivo
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(CardDarkSurface.copy(alpha = 0.9f))
+                    .border(1.dp, GlassBorder, RoundedCornerShape(14.dp))
+                    .padding(horizontal = 9.dp, vertical = 6.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .clip(CircleShape)
-                        .background(
-                            if (isMicActive && hasPermission) ElectricGreen.copy(alpha = 0.2f) else AlertRed.copy(alpha = 0.2f)
-                        )
-                        .border(
-                            1.dp,
-                            if (isMicActive && hasPermission) ElectricGreen else AlertRed,
-                            CircleShape
-                        )
-                        .clickable { onToggleMic() },
-                    contentAlignment = Alignment.Center
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Icon(
-                        imageVector = if (isMicActive && hasPermission) Icons.Default.Mic else Icons.Default.MicOff,
-                        contentDescription = "Microfone",
-                        tint = if (isMicActive && hasPermission) ElectricGreen else AlertRed,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-
-                Column {
-                    Text(
-                        text = if (!hasPermission) "Microfone Desativado" else if (isPitched && pitchNote.isNotBlank()) "Cantando: $pitchNote (${pitchHz.toInt()} Hz)" else if (isMicActive) "Microfone Pronto" else "Microfone Mudo",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isPitched) NeonCyan else TextPrimary,
-                        fontSize = 12.sp
+                        imageVector = Icons.Rounded.Star,
+                        contentDescription = null,
+                        tint = AmberGlow,
+                        modifier = Modifier.size(13.dp)
                     )
                     Text(
-                        text = if (!hasPermission) "Toque para autorizar" else if (isPitched) "Afinador: ${if (centsDeviation >= 0) "+$centsDeviation" else "$centsDeviation"} cents" else "Detecção vocal YIN ativa",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondary,
-                        fontSize = 10.sp
+                        text = String.format(Locale.getDefault(), "%,d", score),
+                        color = TextPureWhite,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.ExtraBold
                     )
                 }
             }
 
-            if (hasPermission && isMicActive) {
-                MicrophoneVisualizer(amplitude = amplitude)
-            } else if (!hasPermission) {
-                Button(
-                    onClick = onRequestPermission,
-                    colors = ButtonDefaults.buttonColors(containerColor = NeonCyan),
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 3.dp)
+            // Indicador de Combo quando ativo
+            if (comboMultiplier > 1) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Brush.horizontalGradient(listOf(FlameOrange, SunsetCoral)))
+                        .padding(horizontal = 8.dp, vertical = 6.dp)
                 ) {
                     Text(
-                        text = "Permitir",
-                        color = DarkBackground,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 11.sp
+                        text = "x$comboMultiplier",
+                        color = TextPureWhite,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Black
                     )
                 }
             }
@@ -687,158 +439,256 @@ fun MicrophoneTunerCard(
     }
 }
 
+/**
+ * Lead-in countdown sutil e flutuante estilo Gemini pill.
+ */
 @Composable
-fun MicrophoneVisualizer(amplitude: Float) {
-    val multipliers = listOf(0.4f, 0.7f, 1.0f, 0.8f, 0.5f)
+private fun GeminiCountdownPill(
+    secondsRemaining: Int,
+    onSkip: () -> Unit
+) {
+    val infiniteTransition = rememberInfiniteTransition(label = "countdown_pulse")
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 0.96f,
+        targetValue = 1.04f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(400, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pill_scale"
+    )
 
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(3.dp),
-        modifier = Modifier.height(24.dp)
+    Box(
+        modifier = Modifier
+            .scale(scale)
+            .clip(CircleShape)
+            .background(
+                Brush.horizontalGradient(listOf(CardElevated, CardDarkSurface))
+            )
+            .border(1.dp, FlameOrange.copy(alpha = 0.6f), CircleShape)
+            .padding(horizontal = 14.dp, vertical = 8.dp)
     ) {
-        multipliers.forEach { mult ->
-            val barHeight by animateFloatAsState(
-                targetValue = (5.dp.value + (amplitude * 19.dp.value * mult)).coerceIn(5f, 24f),
-                animationSpec = tween(100),
-                label = "barHeight"
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(CircleShape)
+                    .background(FlameOrange),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "$secondsRemaining",
+                    color = TextPureWhite,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Black
+                )
+            }
+
+            Text(
+                text = "Entrada em $secondsRemaining s...",
+                color = TextPureWhite,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
             )
 
             Box(
                 modifier = Modifier
-                    .width(3.dp)
-                    .height(barHeight.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(
-                        Brush.verticalGradient(listOf(NeonCyan, ElectricGreen))
+                    .clip(CircleShape)
+                    .background(FlameOrange.copy(alpha = 0.2f))
+                    .clickable { onSkip() }
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.FastForward,
+                        contentDescription = "Pular",
+                        tint = FlameOrange,
+                        modifier = Modifier.size(13.dp)
                     )
-            )
+                    Text(
+                        text = "Pular",
+                        color = FlameOrange,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
         }
     }
 }
 
+/**
+ * Floating Audio Dock inspirado diretamente no design de barra flutuante do Google Gemini (imagens 2 e 3).
+ * Abriga o visualizador WaveProgress em tempo real que ganha vida ao cantar.
+ */
 @Composable
-fun KaraokeControlsBar(
+private fun GeminiStageDock(
     isPlaying: Boolean,
     currentPositionMs: Long,
     durationMs: Long,
+    micAmplitude: Float,
+    pitchNote: String,
+    isVoiceDetected: Boolean,
+    isMicActive: Boolean,
+    hasMicPermission: Boolean,
     onTogglePlay: () -> Unit,
     onSeek: (Long) -> Unit,
     onRestart: () -> Unit,
-    onFinishEarly: () -> Unit
+    onFinishShow: () -> Unit,
+    onRequestMicPermission: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Card(
-        modifier = Modifier
+    val dockShape = RoundedCornerShape(26.dp)
+
+    Box(
+        modifier = modifier
             .fillMaxWidth()
-            .border(1.dp, DarkSurfaceBorder, RoundedCornerShape(16.dp)),
-        colors = CardDefaults.cardColors(containerColor = DarkSurface),
-        shape = RoundedCornerShape(16.dp)
+            .shadow(
+                elevation = 24.dp,
+                shape = dockShape,
+                ambientColor = Color.Black.copy(alpha = 0.8f),
+                spotColor = FlameOrange.copy(alpha = 0.3f)
+            )
+            .clip(dockShape)
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        CardElevated.copy(alpha = 0.98f),
+                        CardDarkSurface.copy(alpha = 0.98f)
+                    )
+                )
+            )
+            .border(1.dp, GlassBorder, dockShape)
+            .padding(horizontal = 14.dp, vertical = 10.dp)
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 8.dp)
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            // Seekbar ultra-fina no topo do dock
             var isUserDragging by remember { mutableStateOf(false) }
             var sliderPos by remember { mutableFloatStateOf(0f) }
 
-            val displayPos = if (isUserDragging) sliderPos.toLong() else currentPositionMs
-
-            Slider(
-                value = if (isUserDragging) sliderPos else currentPositionMs.toFloat(),
-                onValueChange = {
-                    isUserDragging = true
-                    sliderPos = it
-                },
-                onValueChangeFinished = {
-                    isUserDragging = false
-                    onSeek(sliderPos.toLong())
-                },
-                valueRange = 0f..(durationMs.coerceAtLeast(1L)).toFloat(),
-                colors = SliderDefaults.colors(
-                    thumbColor = NeonCyan,
-                    activeTrackColor = NeonCyan,
-                    inactiveTrackColor = DarkSurfaceBorder
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(24.dp)
-            )
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = formatTime(displayPos),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary,
-                    fontSize = 11.sp
+                    text = formatTime(if (isUserDragging) sliderPos.toLong() else currentPositionMs),
+                    color = TextMuted,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.SemiBold
                 )
+
+                Slider(
+                    value = if (isUserDragging) sliderPos else currentPositionMs.toFloat(),
+                    onValueChange = {
+                        isUserDragging = true
+                        sliderPos = it
+                    },
+                    onValueChangeFinished = {
+                        isUserDragging = false
+                        onSeek(sliderPos.toLong())
+                    },
+                    valueRange = 0f..(durationMs.coerceAtLeast(1L)).toFloat(),
+                    colors = SliderDefaults.colors(
+                        thumbColor = FlameOrange,
+                        activeTrackColor = FlameOrange,
+                        inactiveTrackColor = Color.White.copy(alpha = 0.1f)
+                    ),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(20.dp)
+                        .padding(horizontal = 8.dp)
+                )
+
                 Text(
                     text = formatTime(durationMs),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary,
-                    fontSize = 11.sp
+                    color = TextMuted,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
-
+            // Linha principal de controles & WaveProgress Pill
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Botão Reiniciar Show
-                IconButton(
-                    onClick = onRestart,
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clip(CircleShape)
-                        .background(DarkBackground)
-                        .border(1.dp, DarkSurfaceBorder, CircleShape)
+                // Ações à esquerda: Reiniciar e Play/Pause
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = "Reiniciar",
-                        tint = NeonCyan,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-
-                // Botão Central Play / Pause
-                Box(
-                    modifier = Modifier
-                        .size(50.dp)
-                        .clip(CircleShape)
-                        .background(
-                            Brush.linearGradient(listOf(NeonCyan, NeonPink))
+                    IconButton(
+                        onClick = onRestart,
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.06f))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Refresh,
+                            contentDescription = "Reiniciar",
+                            tint = TextSecondary,
+                            modifier = Modifier.size(18.dp)
                         )
-                        .clickable { onTogglePlay() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = if (isPlaying) "Pausar" else "Tocar",
-                        tint = DarkBackground,
-                        modifier = Modifier.size(28.dp)
-                    )
+                    }
+
+                    // Botão Play/Pause principal com gradiente Flame
+                    Box(
+                        modifier = Modifier
+                            .size(46.dp)
+                            .clip(CircleShape)
+                            .background(
+                                Brush.linearGradient(listOf(FlameOrange, SunsetCoral))
+                            )
+                            .clickable { onTogglePlay() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                            contentDescription = if (isPlaying) "Pausar" else "Reproduzir",
+                            tint = TextPureWhite,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
                 }
 
-                // Botão Finalizar e Ver Placar
+                // Centro / Direita: Gemini WaveProgress Capsule (detector vocal vivo)
+                GeminiWaveProgress(
+                    isVoiceDetected = isVoiceDetected,
+                    amplitude = micAmplitude,
+                    pitchNote = pitchNote,
+                    isMicActive = isMicActive,
+                    hasPermission = hasMicPermission,
+                    modifier = Modifier.clickable {
+                        if (!hasMicPermission) onRequestMicPermission()
+                    }
+                )
+
+                // Botão Finalizar Show
                 IconButton(
-                    onClick = onFinishEarly,
+                    onClick = onFinishShow,
                     modifier = Modifier
                         .size(38.dp)
                         .clip(CircleShape)
-                        .background(DarkBackground)
-                        .border(1.dp, DarkSurfaceBorder, CircleShape)
+                        .background(Color.White.copy(alpha = 0.08f))
+                        .border(1.dp, GlassBorder, CircleShape)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.EmojiEvents,
-                        contentDescription = "Ver Placar",
-                        tint = ElectricGreen,
-                        modifier = Modifier.size(18.dp)
+                        imageVector = Icons.Rounded.Check,
+                        contentDescription = "Finalizar",
+                        tint = PitchMint,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
@@ -846,6 +696,9 @@ fun KaraokeControlsBar(
     }
 }
 
+/**
+ * Modal moderno de resultado ao término da performance.
+ */
 @Composable
 fun KaraokeResultDialog(
     summary: KaraokeScoreSummary,
@@ -867,17 +720,10 @@ fun KaraokeResultDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        Card(
+        GlassCard(
             modifier = Modifier
-                .fillMaxWidth(0.94f)
+                .fillMaxWidth(0.92f)
                 .padding(vertical = 24.dp)
-                .border(
-                    width = 2.dp,
-                    brush = Brush.linearGradient(listOf(NeonCyan, NeonPink, ElectricGreen)),
-                    shape = RoundedCornerShape(24.dp)
-                ),
-            colors = CardDefaults.cardColors(containerColor = DarkSurface),
-            shape = RoundedCornerShape(24.dp)
         ) {
             Column(
                 modifier = Modifier
@@ -894,32 +740,32 @@ fun KaraokeResultDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "FIM DO SHOW!",
+                        text = "FIM DO SHOW",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Black,
-                        color = NeonCyan
+                        color = FlameOrange
                     )
                     IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
-                        Icon(imageVector = Icons.Default.Close, contentDescription = "Fechar", tint = TextSecondary)
+                        Icon(imageVector = Icons.Rounded.Close, contentDescription = "Fechar", tint = TextMuted)
                     }
                 }
 
-                // Badge de Rank
+                // Símbolo do Rank
                 Box(
                     modifier = Modifier
                         .size(76.dp)
                         .clip(CircleShape)
                         .background(
-                            Brush.radialGradient(listOf(NeonPink, NeonPurple))
+                            Brush.radialGradient(listOf(FlameOrange, SunsetCoral))
                         )
-                        .border(2.dp, NeonCyan, CircleShape),
+                        .border(2.dp, GoldMedal, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = summary.rank.symbol,
                         fontSize = 42.sp,
                         fontWeight = FontWeight.Black,
-                        color = TextPrimary
+                        color = TextPureWhite
                     )
                 }
 
@@ -927,7 +773,7 @@ fun KaraokeResultDialog(
                     text = summary.rank.title,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextPrimary,
+                    color = TextPureWhite,
                     textAlign = TextAlign.Center
                 )
 
@@ -935,9 +781,9 @@ fun KaraokeResultDialog(
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     for (i in 1..5) {
                         Icon(
-                            imageVector = Icons.Default.Star,
+                            imageVector = Icons.Rounded.Star,
                             contentDescription = null,
-                            tint = if (i <= summary.stars) Color(0xFFFFD700) else DarkSurfaceBorder,
+                            tint = if (i <= summary.stars) GoldMedal else Color.White.copy(alpha = 0.15f),
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -949,46 +795,34 @@ fun KaraokeResultDialog(
                         text = String.format(Locale.getDefault(), "%,d", summary.totalScore),
                         fontSize = 36.sp,
                         fontWeight = FontWeight.Black,
-                        color = ElectricGreen
+                        color = TextPureWhite
                     )
                     Text(
                         text = "de 10.000 pontos possíveis",
                         fontSize = 11.sp,
-                        color = TextSecondary
+                        color = TextMuted
                     )
                 }
 
-                // Tabela de Estatísticas
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .border(1.dp, DarkSurfaceBorder, RoundedCornerShape(12.dp)),
-                    colors = CardDefaults.cardColors(containerColor = DarkBackground),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
+                // Estatísticas
+                GlassCard(modifier = Modifier.fillMaxWidth()) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(10.dp),
+                            .padding(12.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        StatRow(label = "Precisão Vocal:", value = "${summary.accuracyPercentage}%", color = NeonCyan)
-                        StatRow(label = "Maior Combo:", value = "${summary.maxCombo}x", color = ElectricGreen)
-                        StatRow(label = "Afinação Perfeita:", value = "${summary.perfectHits}", color = NeonPink)
-                        StatRow(label = "Muito Bom:", value = "${summary.goodHits}", color = TextPrimary)
+                        StatRow(label = "Precisão Vocal:", value = "${summary.accuracyPercentage}%", color = PitchMint)
+                        StatRow(label = "Maior Combo:", value = "${summary.maxCombo}x", color = FlameOrange)
+                        StatRow(label = "Afinação Perfeita:", value = "${summary.perfectHits}", color = GoldMedal)
+                        StatRow(label = "Muito Bom:", value = "${summary.goodHits}", color = TextPureWhite)
                         StatRow(label = "Quase lá:", value = "${summary.okHits}", color = TextSecondary)
                     }
                 }
 
-                // --- Seção: Gravação da Sua Voz (Ouvir & Compartilhar) ---
+                // Gravação da Voz
                 if (recordedPerformanceFile != null && recordedPerformanceFile.exists()) {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .border(1.dp, NeonCyan.copy(alpha = 0.5f), RoundedCornerShape(12.dp)),
-                        colors = CardDefaults.cardColors(containerColor = DarkBackground),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
+                    GlassCard(modifier = Modifier.fillMaxWidth()) {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1000,16 +834,16 @@ fun KaraokeResultDialog(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Mic,
+                                    imageVector = Icons.Rounded.Mic,
                                     contentDescription = null,
-                                    tint = NeonCyan,
+                                    tint = FlameOrange,
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Text(
-                                    text = "Sua Performance Gravada (WAV)",
+                                    text = "Sua Gravação Vocal",
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = TextPrimary
+                                    color = TextPureWhite
                                 )
                             }
 
@@ -1020,21 +854,19 @@ fun KaraokeResultDialog(
                                 Button(
                                     onClick = onTogglePlayRecorded,
                                     modifier = Modifier.weight(1f),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = if (isPlayingRecorded) NeonPink else NeonCyan
-                                    ),
+                                    colors = ButtonDefaults.buttonColors(containerColor = FlameOrange),
                                     shape = RoundedCornerShape(10.dp)
                                 ) {
                                     Icon(
-                                        imageVector = if (isPlayingRecorded) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                        imageVector = if (isPlayingRecorded) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                                         contentDescription = null,
-                                        tint = DarkBackground,
+                                        tint = TextPureWhite,
                                         modifier = Modifier.size(16.dp)
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
-                                        text = if (isPlayingRecorded) "Pausar" else "Ouvir Voz",
-                                        color = DarkBackground,
+                                        text = if (isPlayingRecorded) "Pausar" else "Ouvir",
+                                        color = TextPureWhite,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 11.sp
                                     )
@@ -1043,20 +875,20 @@ fun KaraokeResultDialog(
                                 Button(
                                     onClick = onSharePerformance,
                                     modifier = Modifier.weight(1f),
-                                    colors = ButtonDefaults.buttonColors(containerColor = DarkSurface),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, NeonPink),
-                                    shape = RoundedCornerShape(10.dp)
+                                    colors = ButtonDefaults.buttonColors(containerColor = CardElevated),
+                                    shape = RoundedCornerShape(10.dp),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, GlassBorder)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.Share,
+                                        imageVector = Icons.Rounded.Share,
                                         contentDescription = null,
-                                        tint = NeonPink,
+                                        tint = TextPureWhite,
                                         modifier = Modifier.size(16.dp)
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
                                         text = "Compartilhar",
-                                        color = TextPrimary,
+                                        color = TextPureWhite,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 11.sp
                                     )
@@ -1066,210 +898,153 @@ fun KaraokeResultDialog(
                     }
                 }
 
-                // --- Seção: Placar de Líderes (Top 10) ---
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .border(1.dp, DarkSurfaceBorder, RoundedCornerShape(12.dp)),
-                    colors = CardDefaults.cardColors(containerColor = DarkBackground),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
+                // Submeter ao Ranking
+                if (!isScoreSubmitted) {
                     Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Registre sua performance no ranking:",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPureWhite
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            OutlinedTextField(
+                                value = singerNameInput,
+                                onValueChange = onSingerNameChange,
+                                placeholder = { Text("Seu nome artístico") },
+                                singleLine = true,
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = FlameOrange,
+                                    unfocusedBorderColor = GlassBorder,
+                                    focusedTextColor = TextPureWhite,
+                                    unfocusedTextColor = TextPureWhite
+                                )
+                            )
+                            Button(
+                                onClick = onSubmitScore,
+                                enabled = singerNameInput.isNotBlank(),
+                                colors = ButtonDefaults.buttonColors(containerColor = FlameOrange),
+                                shape = RoundedCornerShape(10.dp),
+                                modifier = Modifier.height(48.dp)
+                            ) {
+                                Text(
+                                    text = "Salvar",
+                                    color = TextPureWhite,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(PitchMint.copy(alpha = 0.15f))
+                            .padding(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Leaderboard,
-                                contentDescription = null,
-                                tint = ElectricGreen,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Text(
-                                text = "Top 10 do KaraoQ",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextPrimary
-                            )
-                        }
+                        Icon(
+                            imageVector = Icons.Rounded.Check,
+                            contentDescription = null,
+                            tint = PitchMint,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = "Sua pontuação foi registrada no ranking!",
+                            color = PitchMint,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
 
-                        // Formulário de Envio de Pontuação
-                        if (!isScoreSubmitted) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                OutlinedTextField(
-                                    value = singerNameInput,
-                                    onValueChange = onSingerNameChange,
-                                    label = { Text("Seu Apelido", fontSize = 11.sp) },
-                                    modifier = Modifier.weight(1f),
-                                    singleLine = true,
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = ElectricGreen,
-                                        unfocusedBorderColor = DarkSurfaceBorder,
-                                        focusedTextColor = TextPrimary,
-                                        unfocusedTextColor = TextPrimary
-                                    )
-                                )
-                                Button(
-                                    onClick = onSubmitScore,
-                                    enabled = singerNameInput.isNotBlank(),
-                                    colors = ButtonDefaults.buttonColors(containerColor = ElectricGreen),
-                                    shape = RoundedCornerShape(10.dp),
-                                    modifier = Modifier.height(48.dp)
-                                ) {
-                                    Text(
-                                        text = "Salvar",
-                                        color = DarkBackground,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 11.sp
-                                    )
-                                }
-                            }
-                        } else {
+                // Ranking Rápido
+                if (isLoadingLeaderboard) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            color = FlameOrange,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                } else if (leaderboardEntries.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        leaderboardEntries.take(5).forEachIndexed { index, entry ->
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(8.dp))
-                                    .background(ElectricGreen.copy(alpha = 0.15f))
-                                    .padding(8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    .background(CardElevated)
+                                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = null,
-                                    tint = ElectricGreen,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Text(
-                                    text = "Sua pontuação foi registrada no ranking!",
-                                    color = ElectricGreen,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-
-                        // Lista do Ranking
-                        if (isLoadingLeaderboard) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    color = ElectricGreen,
-                                    strokeWidth = 2.dp
-                                )
-                            }
-                        } else if (leaderboardEntries.isEmpty()) {
-                            Text(
-                                text = "Nenhuma pontuação registrada ainda. Seja o primeiro!",
-                                fontSize = 11.sp,
-                                color = TextSecondary,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 6.dp)
-                            )
-                        } else {
-                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                leaderboardEntries.forEachIndexed { index, entry ->
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clip(RoundedCornerShape(6.dp))
-                                            .background(
-                                                if (index == 0) NeonCyan.copy(alpha = 0.08f)
-                                                else DarkSurfaceVariant.copy(alpha = 0.5f)
-                                            )
-                                            .padding(horizontal = 8.dp, vertical = 5.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                        ) {
-                                            KaraoqMedalBadge(
-                                                rank = index + 1,
-                                                size = 18.dp
-                                            )
-                                            Text(
-                                                text = entry.singerName,
-                                                fontSize = 12.sp,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = TextPrimary,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                            Text(
-                                                text = "(${entry.rank})",
-                                                fontSize = 10.sp,
-                                                color = NeonPink
-                                            )
-                                        }
-                                        Text(
-                                            text = "${String.format(Locale.getDefault(), "%,d", entry.score)} pts",
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = ElectricGreen
-                                        )
-                                    }
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    KaraoqMedalBadge(rank = index + 1, size = 18.dp)
+                                    Text(
+                                        text = entry.singerName,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = TextPureWhite,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
                                 }
+                                Text(
+                                    text = "${entry.score} pts",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = AmberGlow
+                                )
                             }
                         }
                     }
                 }
 
-                // Botões de Ação
+                // Botões de Ação do Fim
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Button(
-                        onClick = {
-                            onDismiss()
-                            onRestart()
-                        },
+                        onClick = onRestart,
                         modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = ElectricGreen),
-                        shape = RoundedCornerShape(12.dp)
+                        colors = ButtonDefaults.buttonColors(containerColor = CardElevated),
+                        shape = RoundedCornerShape(12.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, GlassBorder)
                     ) {
-                        Text(
-                            text = "Cantar Novamente",
-                            color = DarkBackground,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp
-                        )
+                        Icon(imageVector = Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(16.dp), tint = TextPureWhite)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Cantar de Novo", color = TextPureWhite, fontWeight = FontWeight.Bold)
                     }
 
                     Button(
-                        onClick = {
-                            onDismiss()
-                            onExit()
-                        },
+                        onClick = onExit,
                         modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = DarkSurface),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, DarkSurfaceBorder),
+                        colors = ButtonDefaults.buttonColors(containerColor = FlameOrange),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text(
-                            text = "Sair do Palco",
-                            color = TextPrimary,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp
-                        )
+                        Text("Voltar ao Início", color = TextPureWhite, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -1284,14 +1059,14 @@ private fun StatRow(label: String, value: String, color: Color) {
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text = label, fontSize = 11.sp, color = TextSecondary)
-        Text(text = value, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = color)
+        Text(text = label, color = TextSecondary, fontSize = 11.sp)
+        Text(text = value, color = color, fontSize = 11.sp, fontWeight = FontWeight.Bold)
     }
 }
 
-private fun formatTime(millis: Long): String {
-    val totalSeconds = (millis / 1000).coerceAtLeast(0)
+private fun formatTime(timeMs: Long): String {
+    val totalSeconds = (timeMs / 1000).coerceAtLeast(0)
     val minutes = totalSeconds / 60
     val seconds = totalSeconds % 60
-    return String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
+    return String.format("%02d:%02d", minutes, seconds)
 }

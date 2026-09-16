@@ -368,7 +368,7 @@ private fun StudioTabContent(
 
         // Card 3: Player de Karaokê com Letra Sincronizada
         if (uiState.separationState is SeparationUiState.Ready) {
-            val readyState = uiState.separationState as SeparationUiState.Ready
+            val readyState = uiState.separationState
             KaraokePlayerCard(
                 trackTitle = readyState.track.title,
                 activeStem = uiState.activeStem,

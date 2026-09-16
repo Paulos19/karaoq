@@ -1,9 +1,11 @@
 package com.karaoq.app.presentation.components
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,10 +24,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -37,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -44,22 +44,21 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.karaoq.app.domain.model.SongLyrics
-import com.karaoq.app.presentation.ui.theme.DarkBackground
-import com.karaoq.app.presentation.ui.theme.DarkSurface
-import com.karaoq.app.presentation.ui.theme.DarkSurfaceBorder
-import com.karaoq.app.presentation.ui.theme.ElectricGreen
-import com.karaoq.app.presentation.ui.theme.NeonCyan
-import com.karaoq.app.presentation.ui.theme.NeonPink
-import com.karaoq.app.presentation.ui.theme.TextPrimary
+import com.karaoq.app.presentation.ui.theme.FlameOrange
+import com.karaoq.app.presentation.ui.theme.ObsidianDeep
+import com.karaoq.app.presentation.ui.theme.PitchMint
+import com.karaoq.app.presentation.ui.theme.SunsetCoral
+import com.karaoq.app.presentation.ui.theme.TextMuted
+import com.karaoq.app.presentation.ui.theme.TextPureWhite
 import com.karaoq.app.presentation.ui.theme.TextSecondary
 
 @Composable
 fun LyricsView(
-    modifier: Modifier = Modifier,
     lyrics: SongLyrics,
     currentPositionMs: Long,
+    modifier: Modifier = Modifier,
     isStageMode: Boolean = false,
-    onSeek: (Long) -> Unit
+    onSeek: (Long) -> Unit = {}
 ) {
     val listState = rememberLazyListState()
 
@@ -69,7 +68,6 @@ fun LyricsView(
             val lines = lyrics.lines
             if (lines.isEmpty()) return@derivedStateOf -1
 
-            // Procura a última linha cujo timeMs <= currentPositionMs
             var activeIdx = -1
             for (i in lines.indices) {
                 if (currentPositionMs >= lines[i].timeMs) {
@@ -85,158 +83,211 @@ fun LyricsView(
     // Auto-scroll suave para manter a frase atual visível e centralizada
     LaunchedEffect(activeLineIndex) {
         if (activeLineIndex >= 0 && activeLineIndex < lyrics.lines.size) {
+            val offset = if (isStageMode) -260 else -180
             listState.animateScrollToItem(
                 index = activeLineIndex,
-                scrollOffset = -200
+                scrollOffset = offset
             )
         }
     }
 
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .border(
-                width = 1.dp,
-                brush = Brush.verticalGradient(listOf(NeonCyan.copy(alpha = 0.6f), NeonPink.copy(alpha = 0.4f))),
-                shape = RoundedCornerShape(16.dp)
-            ),
-        colors = CardDefaults.cardColors(containerColor = DarkSurface),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Column(
-            modifier = if (isStageMode) {
-                Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
-            } else {
-                Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            },
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+    if (isStageMode) {
+        // Modo Palco (Inspirado no Gemini: totalmente imersivo, fluido e sem bordas duras)
+        Box(
+            modifier = modifier.fillMaxSize()
         ) {
-            // Cabeçalho da Letra com Badge de Sincronização
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Mic,
-                        contentDescription = null,
-                        tint = NeonCyan,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Text(
-                        text = "Letra de Karaokê",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-                }
-
-                // Badge de status da sincronização
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(
-                            if (lyrics.isSynced) ElectricGreen.copy(alpha = 0.15f)
-                            else NeonPink.copy(alpha = 0.15f)
-                        )
-                        .border(
-                            width = 1.dp,
-                            color = if (lyrics.isSynced) ElectricGreen else NeonPink,
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = if (lyrics.isSynced) "● Sincronizada (LRC)" else "● Auto-Scroll",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (lyrics.isSynced) ElectricGreen else NeonPink,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-
             if (lyrics.lines.isEmpty()) {
                 Box(
-                    modifier = if (isStageMode) {
-                        Modifier
-                            .weight(1f)
-                            .fillMaxWidth()
-                    } else {
-                        Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 120.dp)
-                    },
+                    modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = if (lyrics.plainText.isNotBlank()) lyrics.plainText
-                        else "Nenhuma letra encontrada para esta música.",
-                        style = MaterialTheme.typography.bodyMedium,
+                        text = if (lyrics.plainText.isNotBlank()) lyrics.plainText else "Solo instrumental...",
+                        style = MaterialTheme.typography.bodyLarge,
                         color = TextSecondary,
                         textAlign = TextAlign.Center
                     )
                 }
             } else {
-                // Lista rolável de frases sincronizadas
                 LazyColumn(
                     state = listState,
-                    modifier = if (isStageMode) {
-                        Modifier
-                            .weight(1f)
-                            .fillMaxWidth()
-                    } else {
-                        Modifier
-                            .fillMaxWidth()
-                            .height(260.dp)
-                    },
-                    contentPadding = PaddingValues(vertical = 40.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(top = 70.dp, bottom = 120.dp, start = 20.dp, end = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(22.dp)
                 ) {
                     itemsIndexed(lyrics.lines) { index, line ->
                         val isActive = index == activeLineIndex
 
                         val textColor by animateColorAsState(
-                            targetValue = if (isActive) NeonCyan else TextSecondary.copy(alpha = 0.45f),
+                            targetValue = if (isActive) TextPureWhite else TextPureWhite.copy(alpha = 0.30f),
                             animationSpec = tween(300),
-                            label = "lyricsColor"
+                            label = "stageTextColor"
                         )
 
-                        val fontSize = if (isActive) 19.sp else 15.sp
+                        val textScale by animateFloatAsState(
+                            targetValue = if (isActive) 1.03f else 1.0f,
+                            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                            label = "stageTextScale"
+                        )
+
+                        val fontSize = if (isActive) 23.sp else 18.sp
                         val fontWeight = if (isActive) FontWeight.ExtraBold else FontWeight.Medium
 
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(if (isActive) NeonCyan.copy(alpha = 0.08f) else Color.Transparent)
+                                .scale(textScale)
+                                .clip(RoundedCornerShape(12.dp))
                                 .clickable { onSeek(line.timeMs) }
-                                .padding(horizontal = 12.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
+                            // Ponto de pulso ao lado da linha ativa
+                            if (isActive) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(6.dp)
+                                        .clip(CircleShape)
+                                        .background(FlameOrange)
+                                )
+                                androidx.compose.foundation.layout.Spacer(modifier = Modifier.size(10.dp))
+                            }
+
                             Text(
                                 text = line.text.ifBlank { "(Instrumental)" },
                                 color = textColor,
                                 fontSize = fontSize,
                                 fontWeight = fontWeight,
                                 textAlign = TextAlign.Start,
+                                lineHeight = (fontSize.value * 1.35f).sp,
                                 modifier = Modifier.weight(1f)
                             )
+                        }
+                    }
+                }
 
-                            if (isActive) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(8.dp)
-                                        .clip(CircleShape)
-                                        .background(NeonPink)
+                // Gradientes sutis superior e inferior para efeito fade estilo Apple Music / Gemini
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp)
+                        .align(Alignment.TopCenter)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(ObsidianDeep, Color.Transparent)
+                            )
+                        )
+                )
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(60.dp)
+                        .align(Alignment.BottomCenter)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(Color.Transparent, ObsidianDeep)
+                            )
+                        )
+                )
+            }
+        }
+    } else {
+        // Modo Estúdio (Card Glassmorphic contido)
+        GlassCard(modifier = modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Cabeçalho da Letra
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Description,
+                            contentDescription = null,
+                            tint = FlameOrange,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = "Letra Sincronizada",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPureWhite
+                        )
+                    }
+
+                    // Badge de sincronização
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(PitchMint.copy(alpha = 0.15f))
+                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                    ) {
+                        Text(
+                            text = if (lyrics.isSynced) "Sincronizada" else "Auto-Scroll",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = PitchMint,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                if (lyrics.lines.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 100.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (lyrics.plainText.isNotBlank()) lyrics.plainText
+                            else "Nenhuma letra disponível.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TextSecondary,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(240.dp),
+                        contentPadding = PaddingValues(vertical = 16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        itemsIndexed(lyrics.lines) { index, line ->
+                            val isActive = index == activeLineIndex
+
+                            val textColor by animateColorAsState(
+                                targetValue = if (isActive) FlameOrange else TextSecondary.copy(alpha = 0.5f),
+                                animationSpec = tween(300),
+                                label = "studioTextColor"
+                            )
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable { onSeek(line.timeMs) }
+                                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = line.text.ifBlank { "(Instrumental)" },
+                                    color = textColor,
+                                    fontSize = if (isActive) 16.sp else 14.sp,
+                                    fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
+                                    modifier = Modifier.weight(1f)
                                 )
                             }
                         }
