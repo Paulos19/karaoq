@@ -146,15 +146,14 @@ class DemucsService:
                 device_arg = ["-d", settings.DEMUCS_DEVICE]
 
             # Parâmetros otimizados:
-            # - --segment 8: segmenta o processamento para manter consumo de RAM baixo (< 1GB)
-            # - -j 1: previne saturação de CPU/threads em VPS
+            # - -j 1: previne saturação de CPU/threads em VPS e reduz consumo de RAM
             # - --filename: garante padrão consistente de saída dos stems
+            # Nota: HTDemucs utiliza nativamente segmentos de 7.8s (o máximo permitido pela arquitetura Transformer)
             cmd = [
                 sys.executable, "-m", "demucs.separate",
                 "-n", settings.DEMUCS_MODEL,
                 f"--two-stems={settings.DEMUCS_TWO_STEMS}",
                 "--filename", "{stem}.{ext}",
-                "--segment", "8",
                 "-j", "1",
                 "--mp3",
                 f"--mp3-bitrate={settings.DEMUCS_MP3_BITRATE}",

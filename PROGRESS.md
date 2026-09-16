@@ -103,7 +103,7 @@ Acompanhamento em tempo real do desenvolvimento do KaraoQ (Backend IA + Android 
 ### 11. Correção do Processamento Demucs, Streaming Real de Separação e Resolução de Áudio (Concluída)
 - [x] Leitura assíncrona do `stderr` no `demucs_service.py` com streaming real de progresso percentual via WebSocket (30% a 85%)
 - [x] Prevenção de timeout (60s) de proxies reversos (Easypanel/Traefik) através de pacotes periódicos contínuos durante a separação
-- [x] Otimização de parâmetros do Demucs (`--segment 8`, `-j 1`) para redução drástica de pico de RAM e prevenção de falhas por Out of Memory (OOM)
+- [x] Otimização de parâmetros do Demucs (`-j 1`, segmento nativo de 7.8s) para redução drástica de pico de RAM e prevenção de falhas por Out of Memory (OOM)
 - [x] Validação estrita de arquivos gerados (verificação de existência e tamanho real > 1000B), eliminando arquivos fantasmas vazios
 - [x] Conversão automática WAV -> MP3 (320kbps via `lameenc`) caso o Demucs gere saída em formato PCM não comprimido
 - [x] Resolução dinâmica de URLs de áudio no backend (`songs.py`) garantindo que stems sempre apontem para o host da requisição ativa
