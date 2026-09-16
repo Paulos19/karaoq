@@ -93,7 +93,14 @@ Acompanhamento em tempo real do desenvolvimento do KaraoQ (Backend IA + Android 
 - [x] Cliente WebSocket no Android (`TranscriptionWebSocketManager.kt`) integrado ao `HomeViewModel` com barra de progresso ao vivo e fallback HTTP
 - [x] Compilação do novo APK de depuração com sucesso (`app-debug.apk` 19.75 MB)
 
-### 10. Próximos Passos (Fases Futuras)
+### 10. Integração LyricFind, Sanitização de Metadados & Resolução de Falhas de Letras (Concluída)
+- [x] Diagnóstico da falha 404 no endpoint `lyrics-api.vercel.app/v2/musixmatch/lyrics` e remoção da rota inexistente
+- [x] Algoritmo inteligente de sanitização de metadados (`clean_metadata`) limpando ruídos em títulos (ex: `(Music Video)`, `[Official Video]`, `Remastered`)
+- [x] Integração oficial com a API Web Service do **LyricFind** (`api.lyricfind.com/lyric.do` com suporte a LRC estruturado e timestamps)
+- [x] Configuração centralizada de credenciais LyricFind (`LYRICFIND_API_URL`, `LYRICFIND_API_KEY`, `LYRICFIND_LRC_KEY`, `LYRICFIND_DISPLAY_KEY`)
+- [x] Cadeia de fallback resiliente para busca de letras: LyricFind -> LRCLIB (busca precisa & busca geral) -> YouTube Lyrics
+
+### 11. Próximos Passos (Fases Futuras)
 - [ ] Mixagem e masterização de áudio em tempo real com efeitos de estúdio (Reverb, Delay, Compressor e Equalizador)
 - [ ] Modo Duelo / Batalha de Voz com dois microfones ou pontuação competitiva lado a lado
 - [ ] Suporte a playlists, fila de espera ("Fila de Karaokê") e modo festa (Party Mode)

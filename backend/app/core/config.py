@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     # External APIs
     LYRICS_API_URL: str = "https://lyrics-api.vercel.app"
     LRCLIB_API_URL: str = "https://lrclib.net/api"
+    LYRICFIND_API_URL: str = "https://api.lyricfind.com"
+    LYRICFIND_API_KEY: str = ""
+    LYRICFIND_LRC_KEY: str = ""
+    LYRICFIND_DISPLAY_KEY: str = ""
 
     # Demucs AI Engine Configuration
     DEMUCS_MODEL: str = "htdemucs"
