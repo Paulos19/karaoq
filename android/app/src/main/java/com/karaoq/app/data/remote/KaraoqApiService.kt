@@ -1,5 +1,7 @@
 package com.karaoq.app.data.remote
 
+import com.karaoq.app.data.model.LeaderboardEntry
+import com.karaoq.app.data.model.LeaderboardSubmitRequest
 import com.karaoq.app.data.model.SeparationCreateResponse
 import com.karaoq.app.data.model.SeparationStatusResponse
 import com.karaoq.app.domain.model.LyricsSearchResponseDto
@@ -30,12 +32,19 @@ interface KaraoqApiService {
         @Path("task_id") taskId: String
     ): Response<SeparationStatusResponse>
 
-    // --- Busca de Letras Sincronizadas ---
+    // --- Busca e Transcrição de Letras ---
     @GET("api/v1/lyrics/search")
     suspend fun searchLyrics(
         @Query("artist") artist: String,
         @Query("title") title: String,
         @Query("duration") durationSeconds: Int? = null
+    ): Response<LyricsSearchResponseDto>
+
+    @POST("api/v1/lyrics/transcribe/{task_id}")
+    suspend fun transcribeLyricsWithAi(
+        @Path("task_id") taskId: String,
+        @Query("artist") artist: String = "",
+        @Query("title") title: String = ""
     ): Response<LyricsSearchResponseDto>
 
     // --- Biblioteca de Músicas no Storage ---
@@ -56,6 +65,19 @@ interface KaraoqApiService {
     suspend fun deleteSavedSong(
         @Path("song_id") songId: String
     ): Response<Unit>
+
+    // --- Placar Global de Líderes (Leaderboard) ---
+    @GET("api/v1/songs/{song_id}/leaderboard")
+    suspend fun getSongLeaderboard(
+        @Path("song_id") songId: String,
+        @Query("limit") limit: Int = 10
+    ): Response<List<LeaderboardEntry>>
+
+    @POST("api/v1/songs/{song_id}/leaderboard")
+    suspend fun submitScore(
+        @Path("song_id") songId: String,
+        @Body payload: LeaderboardSubmitRequest
+    ): Response<LeaderboardEntry>
 
     // --- Healthcheck ---
     @GET("health")

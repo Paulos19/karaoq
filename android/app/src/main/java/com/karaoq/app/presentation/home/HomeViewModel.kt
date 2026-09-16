@@ -12,8 +12,12 @@ import androidx.media3.common.Player
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import android.content.Intent
+import androidx.core.content.FileProvider
 import com.karaoq.app.data.audio.MicrophoneManager
+import com.karaoq.app.data.audio.PerformanceRecorder
 import com.karaoq.app.data.model.JobStatus
+import com.karaoq.app.data.model.LeaderboardSubmitRequest
 import com.karaoq.app.data.remote.ApiClient
 import com.karaoq.app.data.remote.SeparationWebSocketManager
 import com.karaoq.app.domain.audio.KaraokeScoringEngine
@@ -45,8 +49,10 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     val microphoneManager = MicrophoneManager(application)
+    val performanceRecorder = PerformanceRecorder(application)
     private val scoringEngine = KaraokeScoringEngine()
     private val webSocketManager = SeparationWebSocketManager()
+    private var recordedPlayer: ExoPlayer? = null
 
     private var pollingJob: Job? = null
     private var progressTrackingJob: Job? = null
@@ -84,6 +90,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                         Player.STATE_ENDED -> {
                             _uiState.update { it.copy(isPlaying = false) }
                             if (_uiState.value.isKaraokeActive) {
+                                val recordedFile = performanceRecorder.stopRecording()
                                 val song = _uiState.value.activeKaraokeSong
                                 val summary = scoringEngine.finish(
                                     title = song?.title ?: "KaraoQ Track",
@@ -92,9 +99,12 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                                 _uiState.update {
                                     it.copy(
                                         isScoreModalVisible = true,
-                                        scoreSummary = summary
+                                        scoreSummary = summary,
+                                        recordedPerformanceFile = recordedFile,
+                                        isScoreSubmitted = false
                                     )
                                 }
+                                song?.id?.let { loadLeaderboard(it) }
                                 stopMicrophone()
                             }
                         }
@@ -118,6 +128,9 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         startPlayerTracking()
         loadSavedSongs()
         observeMicrophone()
+        microphoneManager.pcmDataListener = { buffer, count ->
+            performanceRecorder.writePcmBuffer(buffer, count)
+        }
     }
 
     private fun observeMicrophone() {
@@ -597,22 +610,27 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 exoPlayer.play()
             }
             startMicrophoneIfActive()
+            performanceRecorder.startRecording(song.id)
         }
     }
 
     fun skipCountdown() {
         countdownJob?.cancel()
+        val songId = _uiState.value.activeKaraokeSong?.id ?: "unknown"
         _uiState.update { it.copy(countdownRemaining = 0, isCountdownRunning = false) }
         viewModelScope.launch(Dispatchers.Main) {
             exoPlayer.seekTo(0L)
             exoPlayer.play()
         }
         startMicrophoneIfActive()
+        performanceRecorder.startRecording(songId)
     }
 
     fun restartKaraoke() {
         countdownJob?.cancel()
         scoringEngine.reset()
+        performanceRecorder.stopRecording()
+        recordedPlayer?.pause()
         viewModelScope.launch(Dispatchers.Main) {
             exoPlayer.pause()
             exoPlayer.seekTo(0L)
@@ -629,12 +647,16 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 lastFeedbackText = "",
                 isScoreModalVisible = false,
                 scoreSummary = null,
+                recordedPerformanceFile = null,
+                isPlayingRecordedPerformance = false,
+                isScoreSubmitted = false,
                 currentPitchNote = "",
                 currentPitchHz = 0f,
                 centsDeviation = 0,
                 isVoicePitched = false
             )
         }
+        val songId = _uiState.value.activeKaraokeSong?.id ?: "unknown"
         countdownJob = viewModelScope.launch {
             for (sec in 5 downTo 1) {
                 _uiState.update { it.copy(countdownRemaining = sec, isCountdownRunning = true) }
@@ -646,6 +668,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 exoPlayer.play()
             }
             startMicrophoneIfActive()
+            performanceRecorder.startRecording(songId)
         }
     }
 
@@ -654,6 +677,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             exoPlayer.pause()
         }
         stopMicrophone()
+        val recordedFile = performanceRecorder.stopRecording()
         val song = _uiState.value.activeKaraokeSong
         val summary = scoringEngine.finish(
             title = song?.title ?: "KaraoQ Track",
@@ -663,21 +687,30 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             it.copy(
                 isPlaying = false,
                 isScoreModalVisible = true,
-                scoreSummary = summary
+                scoreSummary = summary,
+                recordedPerformanceFile = recordedFile,
+                isScoreSubmitted = false
             )
         }
+        song?.id?.let { loadLeaderboard(it) }
     }
 
     fun dismissScoreModal() {
+        recordedPlayer?.pause()
         _uiState.update {
             it.copy(
-                isScoreModalVisible = false
+                isScoreModalVisible = false,
+                isPlayingRecordedPerformance = false
             )
         }
     }
 
     fun exitKaraoke() {
         countdownJob?.cancel()
+        performanceRecorder.stopRecording()
+        recordedPlayer?.pause()
+        recordedPlayer?.release()
+        recordedPlayer = null
         viewModelScope.launch(Dispatchers.Main) {
             exoPlayer.pause()
         }
@@ -689,8 +722,161 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 isCountdownRunning = false,
                 countdownRemaining = 0,
                 isScoreModalVisible = false,
-                scoreSummary = null
+                scoreSummary = null,
+                recordedPerformanceFile = null,
+                isPlayingRecordedPerformance = false
             )
+        }
+    }
+
+    // --- Reprodução e Compartilhamento da Performance Gravada ---
+    fun togglePlayRecordedPerformance() {
+        val file = _uiState.value.recordedPerformanceFile ?: return
+        if (_uiState.value.isPlayingRecordedPerformance) {
+            recordedPlayer?.pause()
+            _uiState.update { it.copy(isPlayingRecordedPerformance = false) }
+        } else {
+            if (recordedPlayer == null) {
+                recordedPlayer = ExoPlayer.Builder(getApplication()).build().apply {
+                    addListener(object : Player.Listener {
+                        override fun onPlaybackStateChanged(state: Int) {
+                            if (state == Player.STATE_ENDED) {
+                                _uiState.update { it.copy(isPlayingRecordedPerformance = false) }
+                            }
+                        }
+                    })
+                }
+            }
+            val mediaItem = MediaItem.fromUri(Uri.fromFile(file))
+            recordedPlayer?.setMediaItem(mediaItem)
+            recordedPlayer?.prepare()
+            recordedPlayer?.play()
+            _uiState.update { it.copy(isPlayingRecordedPerformance = true) }
+        }
+    }
+
+    fun getShareIntentForRecordedPerformance(): Intent? {
+        val file = _uiState.value.recordedPerformanceFile ?: return null
+        val context = getApplication<Application>()
+        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+
+        val songTitle = _uiState.value.activeKaraokeSong?.title ?: "música"
+        return Intent(Intent.ACTION_SEND).apply {
+            type = "audio/wav"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            putExtra(Intent.EXTRA_SUBJECT, "Minha performance no KaraoQ!")
+            putExtra(Intent.EXTRA_TEXT, "Ouça como cantei a música '$songTitle' no KaraoQ! 🎤🔥")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+    }
+
+    // --- Transcrição com IA Multimodal (Gemini Audio) ---
+    fun transcribeWithAi() {
+        val taskId = _uiState.value.taskStatus?.taskId ?: return
+        val artist = _uiState.value.artistInput
+        val title = _uiState.value.titleInput
+
+        viewModelScope.launch {
+            _uiState.update { it.copy(isTranscribingLyrics = true, errorMessage = null) }
+            try {
+                val res = withContext(Dispatchers.IO) {
+                    ApiClient.apiService.transcribeLyricsWithAi(
+                        taskId = taskId,
+                        artist = artist.trim(),
+                        title = title.trim()
+                    )
+                }
+
+                if (res.isSuccessful && res.body() != null) {
+                    val body = res.body()!!
+                    val lyrics = SongLyrics(
+                        isSynced = body.isSynced,
+                        lines = body.lines,
+                        plainText = body.plainText,
+                        rawLrc = body.rawLrc,
+                        source = "gemini_ai"
+                    )
+                    _uiState.update {
+                        it.copy(
+                            lyrics = lyrics,
+                            isTranscribingLyrics = false
+                        )
+                    }
+                    Log.i("KaraoQ", "Letra transcrita com sucesso via Gemini Audio: ${lyrics.lines.size} versos.")
+                } else {
+                    val err = res.errorBody()?.string() ?: res.message()
+                    _uiState.update {
+                        it.copy(
+                            isTranscribingLyrics = false,
+                            errorMessage = "Erro na transcrição: $err"
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("KaraoQ", "Exceção ao transcrever com IA: ${e.message}", e)
+                _uiState.update {
+                    it.copy(
+                        isTranscribingLyrics = false,
+                        errorMessage = "Falha ao transcrever com IA: ${e.localizedMessage}"
+                    )
+                }
+            }
+        }
+    }
+
+    // --- Placar Global de Líderes (Leaderboard) ---
+    fun loadLeaderboard(songId: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoadingLeaderboard = true) }
+            try {
+                val res = withContext(Dispatchers.IO) {
+                    ApiClient.apiService.getSongLeaderboard(songId, limit = 10)
+                }
+                if (res.isSuccessful && res.body() != null) {
+                    _uiState.update {
+                        it.copy(
+                            leaderboardEntries = res.body()!!,
+                            isLoadingLeaderboard = false
+                        )
+                    }
+                } else {
+                    _uiState.update { it.copy(isLoadingLeaderboard = false) }
+                }
+            } catch (e: Exception) {
+                Log.w("KaraoQ", "Erro ao buscar leaderboard: ${e.message}")
+                _uiState.update { it.copy(isLoadingLeaderboard = false) }
+            }
+        }
+    }
+
+    fun updateSingerNameInput(name: String) {
+        _uiState.update { it.copy(singerNameInput = name) }
+    }
+
+    fun submitCurrentScore(singerName: String) {
+        val song = _uiState.value.activeKaraokeSong ?: return
+        val summary = _uiState.value.scoreSummary ?: return
+        val name = singerName.ifBlank { _uiState.value.singerNameInput.ifBlank { "Cantor Anônimo" } }
+
+        viewModelScope.launch {
+            try {
+                val req = LeaderboardSubmitRequest(
+                    singerName = name,
+                    score = summary.totalScore,
+                    rank = summary.rank.symbol,
+                    maxCombo = summary.maxCombo,
+                    perfectHits = summary.perfectHits
+                )
+                val res = withContext(Dispatchers.IO) {
+                    ApiClient.apiService.submitScore(song.id, req)
+                }
+                if (res.isSuccessful) {
+                    _uiState.update { it.copy(isScoreSubmitted = true) }
+                    loadLeaderboard(song.id)
+                }
+            } catch (e: Exception) {
+                Log.e("KaraoQ", "Erro ao submeter pontuação: ${e.message}", e)
+            }
         }
     }
 

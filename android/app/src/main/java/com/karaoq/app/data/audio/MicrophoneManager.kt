@@ -29,6 +29,8 @@ class MicrophoneManager(private val context: Context) {
     private val _isRecording = MutableStateFlow(false)
     val isRecording: StateFlow<Boolean> = _isRecording.asStateFlow()
 
+    var pcmDataListener: ((ShortArray, Int) -> Unit)? = null
+
     private var audioRecord: AudioRecord? = null
     private var recordingJob: Job? = null
 
@@ -79,6 +81,9 @@ class MicrophoneManager(private val context: Context) {
                 while (isActive && _isRecording.value) {
                     val readCount = audioRecord?.read(audioBuffer, 0, audioBuffer.size) ?: 0
                     if (readCount > 0) {
+                        // Notifica o gravador de performance vocal se ativo
+                        pcmDataListener?.invoke(audioBuffer, readCount)
+
                         // 1. Calcula RMS (Root Mean Square) da amplitude
                         var sum = 0.0
                         for (i in 0 until readCount) {

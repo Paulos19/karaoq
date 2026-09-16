@@ -30,6 +30,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Audiotrack
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.LibraryMusic
@@ -299,6 +300,9 @@ fun HomeScreen(
                         currentPositionMs = uiState.currentPositionMs,
                         durationMs = uiState.durationMs,
                         lyrics = uiState.lyrics,
+                        canTranscribeAi = uiState.taskStatus?.taskId != null,
+                        isTranscribingLyrics = uiState.isTranscribingLyrics,
+                        onTranscribeLyricsWithAi = { viewModel.transcribeWithAi() },
                         onTogglePlay = { viewModel.togglePlayPause() },
                         onSwitchStem = { viewModel.switchStem(it) },
                         onSeek = { viewModel.seekTo(it) }
@@ -614,6 +618,9 @@ fun KaraokePlayerCard(
     currentPositionMs: Long,
     durationMs: Long,
     lyrics: SongLyrics?,
+    canTranscribeAi: Boolean = false,
+    isTranscribingLyrics: Boolean = false,
+    onTranscribeLyricsWithAi: () -> Unit = {},
     onTogglePlay: () -> Unit,
     onSwitchStem: (StemType) -> Unit,
     onSeek: (Long) -> Unit
@@ -749,6 +756,53 @@ fun KaraokePlayerCard(
                 currentPositionMs = currentPositionMs,
                 onSeek = onSeek
             )
+        } else if (canTranscribeAi) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, NeonPink.copy(alpha = 0.6f), RoundedCornerShape(14.dp)),
+                colors = CardDefaults.cardColors(containerColor = DarkSurfaceVariant),
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(imageVector = Icons.Default.AutoAwesome, contentDescription = null, tint = NeonPink)
+                        Text(
+                            text = "Sem letra disponível para sincronizar",
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary,
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                    }
+                    Text(
+                        text = "Use a IA (Gemini Audio) para transcrever a voz isolada e gerar os versos sincronizados automaticamente.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextSecondary
+                    )
+                    Button(
+                        onClick = onTranscribeLyricsWithAi,
+                        enabled = !isTranscribingLyrics,
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = NeonPink)
+                    ) {
+                        if (isTranscribingLyrics) {
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp), color = TextPrimary, strokeWidth = 2.dp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Transcrevendo com IA...", color = TextPrimary, fontSize = 12.sp)
+                        } else {
+                            Icon(imageVector = Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(16.dp), tint = TextPrimary)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Transcrever Letra com IA ✨", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
         }
     }
 }

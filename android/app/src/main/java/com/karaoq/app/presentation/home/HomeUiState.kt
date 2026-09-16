@@ -1,6 +1,7 @@
 package com.karaoq.app.presentation.home
 
 import android.net.Uri
+import com.karaoq.app.data.model.LeaderboardEntry
 import com.karaoq.app.data.model.SeparationStatusResponse
 import com.karaoq.app.domain.audio.KaraokeScoreSummary
 import com.karaoq.app.domain.model.NavigationTab
@@ -8,6 +9,7 @@ import com.karaoq.app.domain.model.SavedSong
 import com.karaoq.app.domain.model.SeparationUiState
 import com.karaoq.app.domain.model.SongLyrics
 import com.karaoq.app.domain.model.StemType
+import java.io.File
 
 data class HomeUiState(
     val backendUrl: String = "https://services-karaoq.khdya3.easypanel.host/",
@@ -22,6 +24,7 @@ data class HomeUiState(
     // Letras
     val lyrics: SongLyrics? = null,
     val isSearchingLyrics: Boolean = false,
+    val isTranscribingLyrics: Boolean = false,
 
     // Separação
     val separationState: SeparationUiState = SeparationUiState.Idle,
@@ -59,6 +62,16 @@ data class HomeUiState(
     val lastFeedbackText: String = "",
     val isScoreModalVisible: Boolean = false,
     val scoreSummary: KaraokeScoreSummary? = null,
+
+    // Gravação da Performance Vocal
+    val recordedPerformanceFile: File? = null,
+    val isPlayingRecordedPerformance: Boolean = false,
+
+    // Placar Global de Líderes (Leaderboard)
+    val singerNameInput: String = "",
+    val leaderboardEntries: List<LeaderboardEntry> = emptyList(),
+    val isLoadingLeaderboard: Boolean = false,
+    val isScoreSubmitted: Boolean = false,
 
     val errorMessage: String? = null
 )

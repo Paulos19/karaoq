@@ -6,7 +6,7 @@ Acompanhamento em tempo real do desenvolvimento do KaraoQ (Backend IA + Android 
 
 ## 📊 Status Geral do Projeto
 
-- **Fase Atual:** Fase 7 - Pitch Detection, Pontuação & WebSockets (Concluída)
+- **Fase Atual:** Fase 8 - Gravação Vocal, Transcrição IA (Gemini Audio) & Placar de Líderes (Concluída)
 - **Última Atualização:** 16/09/2026
 - **Repositório Remoto:** `https://github.com/Paulos19/karaoq.git`
 - **URL da API em Produção (Easypanel):** `https://services-karaoq.khdya3.easypanel.host/`
@@ -75,8 +75,18 @@ Acompanhamento em tempo real do desenvolvimento do KaraoQ (Backend IA + Android 
 - [x] Canal WebSocket no backend FastAPI (`/api/v1/separate/ws/{task_id}`) com broadcasting em tempo real do progresso da separação Demucs
 - [x] Cliente WebSocket no app Android (`data/remote/SeparationWebSocketManager.kt`) integrado ao ViewModel com fallback transparente para polling HTTP
 
-### 8. Próximos Passos (Fases Futuras)
-- [ ] Gravação e salvamento da performance vocal mixada com o instrumental para compartilhamento
-- [ ] Transcrição de letras de músicas desconhecidas com IA (Whisper / Gemini Audio)
-- [ ] Placar global de líderes e ranking entre usuários na nuvem
+### 8. Gravação Vocal, Transcrição IA (Gemini Audio) & Placar de Líderes (Concluída)
+- [x] Gravador nativo de performance vocal durante o show (`data/audio/PerformanceRecorder.kt`) gerando WAV 16-bit 44.1kHz de alta qualidade
+- [x] Pré-visualização de áudio gravado e compartilhamento direto via Android Share Intent (`Intent.ACTION_SEND` e `FileProvider`)
+- [x] Serviço de transcrição de letras com IA Multimodal Gemini Audio (`ai_transcription_service.py`) gerando timestamps LRC a partir do vocal isolado
+- [x] Endpoint de transcrição IA (`POST /api/v1/lyrics/transcribe/{task_id}`) e integração no app Android
+- [x] Serviço de Placar de Líderes em Nuvem (`leaderboard_service.py`) persistindo Top 10 pontuações por música
+- [x] Endpoints REST de Leaderboard (`GET /api/v1/songs/{song_id}/leaderboard` e `POST /api/v1/songs/{song_id}/leaderboard`)
+- [x] Submissão de apelido do cantor e exibição do ranking Top 10 com medalhas no modal de encerramento do Karaokê (`KaraokeScreen.kt`)
+
+### 9. Próximos Passos (Fases Futuras)
+- [ ] Mixagem e masterização de áudio em tempo real com efeitos de estúdio (Reverb, Delay, Compressor e Equalizador)
+- [ ] Modo Duelo / Batalha de Voz com dois microfones ou pontuação competitiva lado a lado
+- [ ] Suporte a playlists, fila de espera ("Fila de Karaokê") e modo festa (Party Mode)
+
 

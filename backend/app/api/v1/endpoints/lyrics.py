@@ -2,6 +2,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel
 
+from app.services.ai_transcription_service import ai_transcription_service
 from app.services.lyrics_service import lyrics_service
 
 router = APIRouter()
@@ -53,3 +54,35 @@ async def search_lyrics(
         raw_lrc=result.get("raw_lrc"),
         plain_text=result.get("plain_text", "")
     )
+
+
+@router.post("/transcribe/{task_id}", response_model=LyricsSearchResponse)
+async def transcribe_lyrics_with_ai(
+    task_id: str,
+    artist: Optional[str] = Query("", description="Nome do cantor"),
+    title: Optional[str] = Query("", description="Título da faixa")
+):
+    """
+    Transcreve a voz isolada gerada pelo Demucs em letra sincronizada LRC
+    utilizando inteligência artificial multimodal (Gemini Audio).
+    """
+    try:
+        result = await ai_transcription_service.transcribe_vocals_to_lrc(task_id)
+        return LyricsSearchResponse(
+            source=result.get("source", "gemini_ai"),
+            is_synced=result.get("is_synced", True),
+            artist=artist or "IA Transcrita",
+            title=title or "Faixa Transcrita",
+            lines=[LyricLineModel(**line) for line in result.get("lines", [])],
+            raw_lrc=result.get("raw_lrc"),
+            plain_text=result.get("plain_text", "")
+        )
+    except FileNotFoundError as fnf:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(fnf))
+    except ValueError as ve:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(ve))
+    except Exception as ex:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Falha ao transcrever com IA: {str(ex)}"
+        )
