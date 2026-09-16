@@ -1,14 +1,17 @@
+import logging
 import os
 import uuid
 import aiofiles
 from pathlib import Path
 from typing import Optional
-from fastapi import APIRouter, BackgroundTasks, File, HTTPException, Request, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, File, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect, status
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from app.core.config import settings
-from app.services.demucs_service import DemucsService, TaskStatusEnum, demucs_service
+from app.services.demucs_service import DemucsService, SeparationTask, TaskStatusEnum, demucs_service
+
+logger = logging.getLogger("karaoq.websocket")
 
 router = APIRouter()
 
@@ -128,6 +131,79 @@ async def get_separation_status(task_id: str, request: Request):
         instrumental_url=instrumental_url,
         error=task.error
     )
+
+
+@router.websocket("/ws/{task_id}")
+async def websocket_separation_status(websocket: WebSocket, task_id: str):
+    """
+    Canal WebSocket para streaming em tempo real do progresso da separação de áudio.
+    """
+    await websocket.accept()
+    queue = await demucs_service.subscribe(task_id)
+
+    try:
+        # Envia o estado atual imediatamente se já existir
+        task = demucs_service.get_task(task_id)
+        if task:
+            forwarded_proto = websocket.headers.get("x-forwarded-proto")
+            forwarded_host = websocket.headers.get("x-forwarded-host")
+            scheme = forwarded_proto or ("https" if websocket.url.scheme == "wss" else "http")
+            host = forwarded_host or websocket.headers.get("host") or websocket.url.netloc
+            base_url = f"{scheme}://{host}".rstrip("/")
+
+            vocals_url = f"{base_url}/storage/{task.vocals_relative_path}" if task.vocals_relative_path else None
+            instrumental_url = f"{base_url}/storage/{task.instrumental_relative_path}" if task.instrumental_relative_path else None
+
+            payload = {
+                "task_id": task.task_id,
+                "original_filename": task.original_filename,
+                "status": task.status,
+                "progress_percentage": task.progress_percentage,
+                "message": task.message,
+                "vocals_url": vocals_url,
+                "instrumental_url": instrumental_url,
+                "error": task.error
+            }
+            await websocket.send_json(payload)
+
+            if task.status in [TaskStatusEnum.COMPLETED, TaskStatusEnum.FAILED]:
+                await websocket.close()
+                return
+
+        # Escuta atualizações da fila até que o processo termine
+        while True:
+            updated_task: SeparationTask = await queue.get()
+            forwarded_proto = websocket.headers.get("x-forwarded-proto")
+            forwarded_host = websocket.headers.get("x-forwarded-host")
+            scheme = forwarded_proto or ("https" if websocket.url.scheme == "wss" else "http")
+            host = forwarded_host or websocket.headers.get("host") or websocket.url.netloc
+            base_url = f"{scheme}://{host}".rstrip("/")
+
+            vocals_url = f"{base_url}/storage/{updated_task.vocals_relative_path}" if updated_task.vocals_relative_path else None
+            instrumental_url = f"{base_url}/storage/{updated_task.instrumental_relative_path}" if updated_task.instrumental_relative_path else None
+
+            payload = {
+                "task_id": updated_task.task_id,
+                "original_filename": updated_task.original_filename,
+                "status": updated_task.status,
+                "progress_percentage": updated_task.progress_percentage,
+                "message": updated_task.message,
+                "vocals_url": vocals_url,
+                "instrumental_url": instrumental_url,
+                "error": updated_task.error
+            }
+            await websocket.send_json(payload)
+
+            if updated_task.status in [TaskStatusEnum.COMPLETED, TaskStatusEnum.FAILED]:
+                await websocket.close()
+                break
+
+    except WebSocketDisconnect:
+        logger.info(f"Cliente WebSocket desconectado da tarefa {task_id}")
+    except Exception as ex:
+        logger.warning(f"Exceção no WebSocket da tarefa {task_id}: {ex}")
+    finally:
+        await demucs_service.unsubscribe(task_id, queue)
 
 
 @router.get("/{task_id}/download/{stem_type}")

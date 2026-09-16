@@ -2,6 +2,7 @@ package com.karaoq.app.presentation.library
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -191,6 +192,8 @@ fun SavedSongCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .clickable { onPlay() }
             .border(1.dp, DarkSurfaceBorder, RoundedCornerShape(14.dp)),
         colors = CardDefaults.cardColors(containerColor = DarkSurface),
         shape = RoundedCornerShape(14.dp)
@@ -255,25 +258,36 @@ fun SavedSongCard(
                 }
             }
 
-            // Ações: Play e Delete
+            // Ações: Botão Cantar e Excluir
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Box(
                     modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(NeonCyan)
-                        .padding(0.dp),
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(
+                            Brush.horizontalGradient(listOf(NeonCyan, NeonPink))
+                        )
+                        .clickable { onPlay() }
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    IconButton(onClick = onPlay) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
                         Icon(
-                            imageVector = Icons.Default.PlayArrow,
-                            contentDescription = "Tocar Karaokê",
+                            imageVector = Icons.Default.Mic,
+                            contentDescription = "Cantar no Palco Karaokê",
                             tint = DarkBackground,
-                            modifier = Modifier.size(26.dp)
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = "Cantar",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp,
+                            color = DarkBackground
                         )
                     }
                 }

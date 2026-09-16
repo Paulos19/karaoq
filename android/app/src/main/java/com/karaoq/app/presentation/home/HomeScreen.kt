@@ -86,6 +86,7 @@ import com.karaoq.app.domain.model.SeparationUiState
 import com.karaoq.app.domain.model.SongLyrics
 import com.karaoq.app.domain.model.StemType
 import com.karaoq.app.presentation.components.LyricsView
+import com.karaoq.app.presentation.karaoke.KaraokeScreen
 import com.karaoq.app.presentation.library.SavedSongsScreen
 import com.karaoq.app.presentation.ui.theme.AlertRed
 import com.karaoq.app.presentation.ui.theme.DarkBackground
@@ -107,6 +108,17 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showSettingsDialog by remember { mutableStateOf(false) }
+
+    // Se o modo Karaokê estiver ativo, renderiza a tela dedicada do Palco com contagem e microfone
+    if (uiState.isKaraokeActive) {
+        KaraokeScreen(
+            modifier = modifier,
+            uiState = uiState,
+            viewModel = viewModel,
+            onExit = { viewModel.exitKaraoke() }
+        )
+        return
+    }
 
     val audioPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()

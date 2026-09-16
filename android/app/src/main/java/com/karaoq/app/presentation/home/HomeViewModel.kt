@@ -12,8 +12,11 @@ import androidx.media3.common.Player
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import com.karaoq.app.data.audio.MicrophoneManager
 import com.karaoq.app.data.model.JobStatus
 import com.karaoq.app.data.remote.ApiClient
+import com.karaoq.app.data.remote.SeparationWebSocketManager
+import com.karaoq.app.domain.audio.KaraokeScoringEngine
 import com.karaoq.app.domain.model.KaraoqTrack
 import com.karaoq.app.domain.model.NavigationTab
 import com.karaoq.app.domain.model.SavedSong
@@ -34,14 +37,21 @@ import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.WebSocket
 
 class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(HomeUiState(backendUrl = ApiClient.currentBaseUrl))
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
+    val microphoneManager = MicrophoneManager(application)
+    private val scoringEngine = KaraokeScoringEngine()
+    private val webSocketManager = SeparationWebSocketManager()
+
     private var pollingJob: Job? = null
     private var progressTrackingJob: Job? = null
+    private var countdownJob: Job? = null
+    private var separationWebSocket: WebSocket? = null
 
     // DataSource HTTP com suporte obrigatório a redirecionamentos cross-protocol (http -> https)
     private val httpDataSourceFactory = DefaultHttpDataSource.Factory()
@@ -73,6 +83,20 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                         }
                         Player.STATE_ENDED -> {
                             _uiState.update { it.copy(isPlaying = false) }
+                            if (_uiState.value.isKaraokeActive) {
+                                val song = _uiState.value.activeKaraokeSong
+                                val summary = scoringEngine.finish(
+                                    title = song?.title ?: "KaraoQ Track",
+                                    artist = song?.artist ?: ""
+                                )
+                                _uiState.update {
+                                    it.copy(
+                                        isScoreModalVisible = true,
+                                        scoreSummary = summary
+                                    )
+                                }
+                                stopMicrophone()
+                            }
                         }
                         else -> Unit
                     }
@@ -93,6 +117,46 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     init {
         startPlayerTracking()
         loadSavedSongs()
+        observeMicrophone()
+    }
+
+    private fun observeMicrophone() {
+        viewModelScope.launch {
+            microphoneManager.amplitude.collect { amp ->
+                if (_uiState.value.isMicActive) {
+                    _uiState.update { it.copy(micAmplitude = amp) }
+                }
+            }
+        }
+
+        viewModelScope.launch {
+            microphoneManager.pitch.collect { pitch ->
+                if (_uiState.value.isMicActive && _uiState.value.isKaraokeActive && !_uiState.value.isCountdownRunning && _uiState.value.isPlaying) {
+                    val frameResult = scoringEngine.processFrame(pitch)
+                    _uiState.update {
+                        it.copy(
+                            currentPitchNote = pitch.noteName,
+                            currentPitchHz = pitch.frequencyHz,
+                            centsDeviation = pitch.centsDeviation,
+                            isVoicePitched = pitch.isPitched,
+                            vocalScore = frameResult.score,
+                            comboCount = frameResult.combo,
+                            comboMultiplier = frameResult.multiplier,
+                            lastFeedbackText = if (frameResult.feedback.text.isNotEmpty()) frameResult.feedback.text else it.lastFeedbackText
+                        )
+                    }
+                } else if (!_uiState.value.isMicActive) {
+                    _uiState.update {
+                        it.copy(
+                            currentPitchNote = "",
+                            currentPitchHz = 0f,
+                            centsDeviation = 0,
+                            isVoicePitched = false
+                        )
+                    }
+                }
+            }
+        }
     }
 
     private fun startPlayerTracking() {
@@ -269,7 +333,7 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                             )
                         )
                     }
-                    startPollingStatus(createData.taskId, filename)
+                    startTrackingStatus(createData.taskId, filename)
                 } else {
                     val errorDetail = response.errorBody()?.string() ?: response.message()
                     _uiState.update {
@@ -290,6 +354,99 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private fun startTrackingStatus(taskId: String, filename: String) {
+        pollingJob?.cancel()
+        separationWebSocket?.close(1000, null)
+        separationWebSocket = null
+
+        var hasReceivedWsUpdate = false
+
+        try {
+            separationWebSocket = webSocketManager.startStreaming(
+                taskId = taskId,
+                baseUrl = _uiState.value.backendUrl,
+                onUpdate = { status ->
+                    hasReceivedWsUpdate = true
+                    viewModelScope.launch(Dispatchers.Main) {
+                        handleSeparationStatusUpdate(status, taskId, filename)
+                    }
+                },
+                onError = {
+                    // Fallback imediato para HTTP Polling se o WebSocket falhar
+                    if (!hasReceivedWsUpdate) {
+                        viewModelScope.launch(Dispatchers.Main) {
+                            startPollingStatus(taskId, filename)
+                        }
+                    }
+                },
+                onComplete = {
+                    separationWebSocket = null
+                }
+            )
+        } catch (e: Exception) {
+            startPollingStatus(taskId, filename)
+        }
+    }
+
+    private fun handleSeparationStatusUpdate(
+        status: SeparationStatusResponse,
+        taskId: String,
+        filename: String
+    ) {
+        _uiState.update { it.copy(taskStatus = status) }
+
+        when (JobStatus.fromString(status.status)) {
+            JobStatus.COMPLETED -> {
+                separationWebSocket?.close(1000, null)
+                separationWebSocket = null
+
+                val instrumentalSafe = sanitizeUrl(status.instrumentalUrl)
+                val vocalsSafe = sanitizeUrl(status.vocalsUrl)
+                val title = _uiState.value.titleInput.ifBlank { filename }
+                val artist = _uiState.value.artistInput
+
+                val track = KaraoqTrack(
+                    id = taskId,
+                    title = title,
+                    instrumentalUrl = instrumentalSafe,
+                    vocalsUrl = vocalsSafe
+                )
+                _uiState.update {
+                    it.copy(
+                        separationState = SeparationUiState.Ready(track),
+                        activeStem = StemType.INSTRUMENTAL,
+                        errorMessage = null
+                    )
+                }
+                instrumentalSafe?.let { preparePlayer(it) }
+                autoSaveSongToStorage(taskId, title, artist, instrumentalSafe, vocalsSafe)
+            }
+            JobStatus.FAILED -> {
+                separationWebSocket?.close(1000, null)
+                separationWebSocket = null
+
+                val err = status.error ?: status.message
+                _uiState.update {
+                    it.copy(
+                        separationState = SeparationUiState.Error(err),
+                        errorMessage = err
+                    )
+                }
+            }
+            JobStatus.PROCESSING, JobStatus.QUEUED -> {
+                _uiState.update {
+                    it.copy(
+                        separationState = SeparationUiState.Processing(
+                            progress = status.progressPercentage.coerceAtLeast(12),
+                            message = status.message
+                        )
+                    )
+                }
+            }
+            else -> Unit
+        }
+    }
+
     private fun startPollingStatus(taskId: String, filename: String) {
         pollingJob?.cancel()
         pollingJob = viewModelScope.launch {
@@ -307,60 +464,13 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
                     if (res.isSuccessful && res.body() != null) {
                         val status = res.body()!!
-                        _uiState.update { it.copy(taskStatus = status) }
-
-                        when (JobStatus.fromString(status.status)) {
-                            JobStatus.COMPLETED -> {
-                                val instrumentalSafe = sanitizeUrl(status.instrumentalUrl)
-                                val vocalsSafe = sanitizeUrl(status.vocalsUrl)
-
-                                val title = _uiState.value.titleInput.ifBlank { filename }
-                                val artist = _uiState.value.artistInput
-
-                                val track = KaraoqTrack(
-                                    id = taskId,
-                                    title = title,
-                                    instrumentalUrl = instrumentalSafe,
-                                    vocalsUrl = vocalsSafe
-                                )
-                                _uiState.update {
-                                    it.copy(
-                                        separationState = SeparationUiState.Ready(track),
-                                        activeStem = StemType.INSTRUMENTAL,
-                                        errorMessage = null
-                                    )
-                                }
-                                instrumentalSafe?.let { preparePlayer(it) }
-
-                                // Salva automaticamente no storage para a biblioteca
-                                autoSaveSongToStorage(taskId, title, artist, instrumentalSafe, vocalsSafe)
-                                break
-                            }
-                            JobStatus.FAILED -> {
-                                val err = status.error ?: status.message
-                                _uiState.update {
-                                    it.copy(
-                                        separationState = SeparationUiState.Error(err),
-                                        errorMessage = err
-                                    )
-                                }
-                                break
-                            }
-                            JobStatus.PROCESSING, JobStatus.QUEUED -> {
-                                _uiState.update {
-                                    it.copy(
-                                        separationState = SeparationUiState.Processing(
-                                            progress = status.progressPercentage.coerceAtLeast(15),
-                                            message = status.message
-                                        )
-                                    )
-                                }
-                            }
-                            else -> Unit
+                        handleSeparationStatusUpdate(status, taskId, filename)
+                        if (status.status == JobStatus.COMPLETED.name || status.status == JobStatus.FAILED.name) {
+                            break
                         }
                     }
                 } catch (e: Exception) {
-                    // Ignora falhas de polling temporárias
+                    // Ignora falhas de rede temporárias no polling
                 }
             }
         }
@@ -428,6 +538,12 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun playSavedSong(song: SavedSong) {
+        startKaraoke(song)
+    }
+
+    fun startKaraoke(song: SavedSong) {
+        countdownJob?.cancel()
+        scoringEngine.reset()
         val track = KaraoqTrack(
             id = song.id,
             title = "${song.artist} - ${song.title}".trim().trim('-').trim(),
@@ -438,19 +554,178 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
         _uiState.update {
             it.copy(
+                isKaraokeActive = true,
+                activeKaraokeSong = song,
                 separationState = SeparationUiState.Ready(track),
                 lyrics = song.lyrics,
                 activeStem = StemType.INSTRUMENTAL,
-                currentTab = NavigationTab.CREATE, // Muda para a tela com o player
-                artistInput = song.artist,
-                titleInput = song.title,
-                isSongSaved = true,
+                isVocalGuideActive = false,
+                countdownRemaining = 5,
+                isCountdownRunning = true,
+                isPlaying = false,
+                vocalScore = 0,
+                comboCount = 0,
+                comboMultiplier = 1,
+                lastFeedbackText = "",
+                isScoreModalVisible = false,
+                scoreSummary = null,
+                currentPitchNote = "",
+                currentPitchHz = 0f,
+                centsDeviation = 0,
+                isVoicePitched = false,
                 errorMessage = null
             )
         }
 
+        // Prepara o playback instrumental em pausa na posição 0
         song.instrumentalUrl?.let {
-            preparePlayer(it, autoPlay = true)
+            preparePlayer(it, autoPlay = false)
+            viewModelScope.launch(Dispatchers.Main) {
+                exoPlayer.seekTo(0L)
+            }
+        }
+
+        // Inicia contagem regressiva de 5 segundos
+        countdownJob = viewModelScope.launch {
+            for (sec in 5 downTo 1) {
+                _uiState.update { it.copy(countdownRemaining = sec, isCountdownRunning = true) }
+                delay(1000)
+            }
+            _uiState.update { it.copy(countdownRemaining = 0, isCountdownRunning = false) }
+            withContext(Dispatchers.Main) {
+                exoPlayer.seekTo(0L)
+                exoPlayer.play()
+            }
+            startMicrophoneIfActive()
+        }
+    }
+
+    fun skipCountdown() {
+        countdownJob?.cancel()
+        _uiState.update { it.copy(countdownRemaining = 0, isCountdownRunning = false) }
+        viewModelScope.launch(Dispatchers.Main) {
+            exoPlayer.seekTo(0L)
+            exoPlayer.play()
+        }
+        startMicrophoneIfActive()
+    }
+
+    fun restartKaraoke() {
+        countdownJob?.cancel()
+        scoringEngine.reset()
+        viewModelScope.launch(Dispatchers.Main) {
+            exoPlayer.pause()
+            exoPlayer.seekTo(0L)
+        }
+        stopMicrophone()
+        _uiState.update {
+            it.copy(
+                countdownRemaining = 5,
+                isCountdownRunning = true,
+                isPlaying = false,
+                vocalScore = 0,
+                comboCount = 0,
+                comboMultiplier = 1,
+                lastFeedbackText = "",
+                isScoreModalVisible = false,
+                scoreSummary = null,
+                currentPitchNote = "",
+                currentPitchHz = 0f,
+                centsDeviation = 0,
+                isVoicePitched = false
+            )
+        }
+        countdownJob = viewModelScope.launch {
+            for (sec in 5 downTo 1) {
+                _uiState.update { it.copy(countdownRemaining = sec, isCountdownRunning = true) }
+                delay(1000)
+            }
+            _uiState.update { it.copy(countdownRemaining = 0, isCountdownRunning = false) }
+            withContext(Dispatchers.Main) {
+                exoPlayer.seekTo(0L)
+                exoPlayer.play()
+            }
+            startMicrophoneIfActive()
+        }
+    }
+
+    fun finishKaraokeManually() {
+        viewModelScope.launch(Dispatchers.Main) {
+            exoPlayer.pause()
+        }
+        stopMicrophone()
+        val song = _uiState.value.activeKaraokeSong
+        val summary = scoringEngine.finish(
+            title = song?.title ?: "KaraoQ Track",
+            artist = song?.artist ?: ""
+        )
+        _uiState.update {
+            it.copy(
+                isPlaying = false,
+                isScoreModalVisible = true,
+                scoreSummary = summary
+            )
+        }
+    }
+
+    fun dismissScoreModal() {
+        _uiState.update {
+            it.copy(
+                isScoreModalVisible = false
+            )
+        }
+    }
+
+    fun exitKaraoke() {
+        countdownJob?.cancel()
+        viewModelScope.launch(Dispatchers.Main) {
+            exoPlayer.pause()
+        }
+        stopMicrophone()
+        _uiState.update {
+            it.copy(
+                isKaraokeActive = false,
+                activeKaraokeSong = null,
+                isCountdownRunning = false,
+                countdownRemaining = 0,
+                isScoreModalVisible = false,
+                scoreSummary = null
+            )
+        }
+    }
+
+    fun toggleMic() {
+        val next = !_uiState.value.isMicActive
+        _uiState.update { it.copy(isMicActive = next) }
+        if (next) {
+            startMicrophoneIfActive()
+        } else {
+            stopMicrophone()
+            _uiState.update { it.copy(micAmplitude = 0f) }
+        }
+    }
+
+    fun toggleVocalGuide() {
+        val current = _uiState.value.isVocalGuideActive
+        val next = !current
+        _uiState.update { it.copy(isVocalGuideActive = next) }
+        val targetStem = if (next) StemType.VOCALS else StemType.INSTRUMENTAL
+        switchStem(targetStem)
+    }
+
+    fun startMicrophoneIfActive() {
+        if (_uiState.value.isMicActive && microphoneManager.hasPermission()) {
+            microphoneManager.start(viewModelScope)
+        }
+    }
+
+    fun stopMicrophone() {
+        microphoneManager.stop()
+    }
+
+    fun onMicPermissionResult(granted: Boolean) {
+        if (granted && _uiState.value.isKaraokeActive && !_uiState.value.isCountdownRunning) {
+            startMicrophoneIfActive()
         }
     }
 
@@ -546,8 +821,11 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     override fun onCleared() {
         super.onCleared()
+        countdownJob?.cancel()
         pollingJob?.cancel()
         progressTrackingJob?.cancel()
+        separationWebSocket?.close(1000, null)
+        microphoneManager.stop()
         exoPlayer.release()
     }
 }

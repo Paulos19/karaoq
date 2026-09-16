@@ -6,8 +6,8 @@ Acompanhamento em tempo real do desenvolvimento do KaraoQ (Backend IA + Android 
 
 ## 📊 Status Geral do Projeto
 
-- **Fase Atual:** Fase 1 - Setup Arquitetural & Fundação Monorepo (Concluída)
-- **Última Atualização:** 10/09/2026
+- **Fase Atual:** Fase 7 - Pitch Detection, Pontuação & WebSockets (Concluída)
+- **Última Atualização:** 16/09/2026
 - **Repositório Remoto:** `https://github.com/Paulos19/karaoq.git`
 - **URL da API em Produção (Easypanel):** `https://services-karaoq.khdya3.easypanel.host/`
 
@@ -48,7 +48,7 @@ Acompanhamento em tempo real do desenvolvimento do KaraoQ (Backend IA + Android 
 - [x] Compilação do APK de Debug com Sucesso: `app-debug.apk` gerado (19.5 MB)
 - [x] Instalação e execução com sucesso em dispositivo físico via ADB (modelo `2412DPC0AG`) com `adb reverse` ativo
 
-### 5. Letras Sincronizadas & Biblioteca no Storage (Nova Fase Concluída)
+### 5. Letras Sincronizadas & Biblioteca no Storage
 - [x] Serviço de busca de letras (`backend/app/services/lyrics_service.py`) com integração LRCLIB + `lyrics-api`
 - [x] Parser de formato LRC com timestamps precisos em milissegundos
 - [x] Serviço de armazenamento e persistência de músicas (`backend/app/services/song_storage_service.py` em `storage/songs/`)
@@ -57,6 +57,26 @@ Acompanhamento em tempo real do desenvolvimento do KaraoQ (Backend IA + Android 
 - [x] Tela de biblioteca de músicas salvas (`presentation/library/SavedSongsScreen.kt`) com reprodução instantânea
 - [x] Interface com abas de navegação ("Criar Karaokê" e "Músicas Salvas") e campos de Cantor e Título
 
-### 6. Próximos Passos (Fases Futuras)
-- [ ] Sistema de pontuação vocal em tempo real (Pitch Detection / AudioRecord)
-- [ ] Suporte a WebSocket para progresso de inferência em tempo real
+### 6. Modo Palco Karaokê & Captação de Áudio (Concluída no App)
+- [x] Gerenciador nativo de microfone (`data/audio/MicrophoneManager.kt`) com `AudioRecord` (PCM 16-bit, 44.1kHz), cálculo de amplitude RMS e suavização
+- [x] Tela dedicada do Palco Karaokê (`presentation/karaoke/KaraokeScreen.kt`) com visual moderno e imersivo
+- [x] Contagem regressiva animada de 5 segundos antes do início do playback para preparação do cantor
+- [x] Visualizador VU Meter sonoro reativo com barras equalizadoras alimentadas pela voz do usuário
+- [x] Seletor instantâneo entre "Voz Guia (Lead Vocal)" e "Playback Puro"
+- [x] Botão de ação "Cantar" direto no cartão de músicas salvas da biblioteca (`SavedSongsScreen.kt`)
+- [x] Gerenciamento reativo de permissão `RECORD_AUDIO` em tempo de execução via Jetpack Compose
+
+### 7. Pitch Detection Vocal, Pontuação de Karaokê & WebSockets (Concluída)
+- [x] Implementação do algoritmo YIN de detecção de afinação em tempo real (`data/audio/PitchDetector.kt`) com conversão para notas musicais (C4, A4, etc.) e medição de desvio em cents
+- [x] Integração do detector de afinação ao fluxo de captura de áudio (`data/audio/MicrophoneManager.kt`)
+- [x] Motor de pontuação de Karaokê (`domain/audio/KaraokeScoringEngine.kt`) com avaliação de estabilidade, combos (x1 a x4) e feedbacks instantâneos ("Perfeito!", "Muito Bom!", "Quase lá!")
+- [x] Afinador visual e placar dinâmico em tempo real na tela do palco (`presentation/karaoke/KaraokeScreen.kt`)
+- [x] Modal de Fim de Show com pontuação clássica (0 a 10.000 pts), estrelas (1 a 5), troféus e sistema de ranking (Rank S, A, B, C)
+- [x] Canal WebSocket no backend FastAPI (`/api/v1/separate/ws/{task_id}`) com broadcasting em tempo real do progresso da separação Demucs
+- [x] Cliente WebSocket no app Android (`data/remote/SeparationWebSocketManager.kt`) integrado ao ViewModel com fallback transparente para polling HTTP
+
+### 8. Próximos Passos (Fases Futuras)
+- [ ] Gravação e salvamento da performance vocal mixada com o instrumental para compartilhamento
+- [ ] Transcrição de letras de músicas desconhecidas com IA (Whisper / Gemini Audio)
+- [ ] Placar global de líderes e ranking entre usuários na nuvem
+

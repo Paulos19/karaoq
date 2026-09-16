@@ -2,6 +2,7 @@ package com.karaoq.app.presentation.home
 
 import android.net.Uri
 import com.karaoq.app.data.model.SeparationStatusResponse
+import com.karaoq.app.domain.audio.KaraokeScoreSummary
 import com.karaoq.app.domain.model.NavigationTab
 import com.karaoq.app.domain.model.SavedSong
 import com.karaoq.app.domain.model.SeparationUiState
@@ -37,6 +38,27 @@ data class HomeUiState(
     val isLoadingSavedSongs: Boolean = false,
     val isSavingSong: Boolean = false,
     val isSongSaved: Boolean = false,
+
+    // Modo Karaokê (Palco)
+    val isKaraokeActive: Boolean = false,
+    val activeKaraokeSong: SavedSong? = null,
+    val countdownRemaining: Int = 0,
+    val isCountdownRunning: Boolean = false,
+    val isMicActive: Boolean = true,
+    val micAmplitude: Float = 0f,
+    val isVocalGuideActive: Boolean = false,
+
+    // Detecção de Tom Vocal e Pontuação em Tempo Real
+    val currentPitchNote: String = "",
+    val currentPitchHz: Float = 0f,
+    val centsDeviation: Int = 0,
+    val isVoicePitched: Boolean = false,
+    val vocalScore: Int = 0,
+    val comboCount: Int = 0,
+    val comboMultiplier: Int = 1,
+    val lastFeedbackText: String = "",
+    val isScoreModalVisible: Boolean = false,
+    val scoreSummary: KaraokeScoreSummary? = null,
 
     val errorMessage: String? = null
 )

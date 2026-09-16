@@ -8,7 +8,7 @@ import time
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 from app.core.config import settings
 
@@ -42,6 +42,7 @@ class DemucsService:
     def __init__(self):
         self._tasks: Dict[str, SeparationTask] = {}
         self._lock = asyncio.Lock()
+        self._subscribers: Dict[str, List[asyncio.Queue]] = {}
 
     def get_task(self, task_id: str) -> Optional[SeparationTask]:
         return self._tasks.get(task_id)
@@ -58,6 +59,21 @@ class DemucsService:
             self._tasks[task_id] = task
             return task
 
+    async def subscribe(self, task_id: str) -> asyncio.Queue:
+        queue: asyncio.Queue = asyncio.Queue()
+        async with self._lock:
+            if task_id not in self._subscribers:
+                self._subscribers[task_id] = []
+            self._subscribers[task_id].append(queue)
+        return queue
+
+    async def unsubscribe(self, task_id: str, queue: asyncio.Queue):
+        async with self._lock:
+            if task_id in self._subscribers and queue in self._subscribers[task_id]:
+                self._subscribers[task_id].remove(queue)
+                if not self._subscribers[task_id]:
+                    del self._subscribers[task_id]
+
     async def update_task(self, task_id: str, **kwargs):
         async with self._lock:
             if task_id in self._tasks:
@@ -66,6 +82,11 @@ class DemucsService:
                     if hasattr(task, key):
                         setattr(task, key, value)
                 task.updated_at = time.time()
+
+                # Notifica todos os WebSockets inscritos nesta tarefa
+                if task_id in self._subscribers:
+                    for queue in list(self._subscribers[task_id]):
+                        await queue.put(task)
 
     async def execute_separation(self, task_id: str):
         """
