@@ -199,14 +199,28 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun sanitizeUrl(url: String?): String? {
         if (url.isNullOrBlank()) return null
-        return if (url.startsWith("http://") &&
-            !url.contains("localhost") &&
-            !url.contains("127.0.0.1") &&
-            !url.contains("10.0.2.2")
-        ) {
-            url.replaceFirst("http://", "https://")
+        val trimmed = url.trim()
+        val baseUrl = ApiClient.currentBaseUrl.trimEnd('/')
+
+        // Se a URL for relativa (ex: /storage/... ou storage/...)
+        val resolvedUrl = if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+            // Se a URL salva aponta para storage com host diferente ou desatualizado (ex: localhost vs VPS)
+            if (trimmed.contains("/storage/separated/")) {
+                val storagePath = trimmed.substring(trimmed.indexOf("/storage/separated/"))
+                "$baseUrl$storagePath"
+            } else {
+                trimmed
+            }
         } else {
-            url
+            val cleanPath = trimmed.removePrefix("/")
+            "$baseUrl/$cleanPath"
+        }
+
+        // Garante https se o backend atual configurado for https
+        return if (baseUrl.startsWith("https://") && resolvedUrl.startsWith("http://")) {
+            resolvedUrl.replaceFirst("http://", "https://")
+        } else {
+            resolvedUrl
         }
     }
 
@@ -381,21 +395,25 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
         separationWebSocket?.close(1000, null)
         separationWebSocket = null
 
-        var hasReceivedWsUpdate = false
+        var isTerminalStateReached = false
 
         try {
             separationWebSocket = webSocketManager.startStreaming(
                 taskId = taskId,
                 baseUrl = _uiState.value.backendUrl,
                 onUpdate = { status ->
-                    hasReceivedWsUpdate = true
                     viewModelScope.launch(Dispatchers.Main) {
                         handleSeparationStatusUpdate(status, taskId, filename)
+                        val jobStatus = JobStatus.fromString(status.status)
+                        if (jobStatus == JobStatus.COMPLETED || jobStatus == JobStatus.FAILED) {
+                            isTerminalStateReached = true
+                            pollingJob?.cancel()
+                        }
                     }
                 },
                 onError = {
-                    // Fallback imediato para HTTP Polling se o WebSocket falhar
-                    if (!hasReceivedWsUpdate) {
+                    // Fallback imediato para HTTP Polling se o WebSocket falhar ou for interrompido
+                    if (!isTerminalStateReached) {
                         viewModelScope.launch(Dispatchers.Main) {
                             startPollingStatus(taskId, filename)
                         }
@@ -403,6 +421,12 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
                 },
                 onComplete = {
                     separationWebSocket = null
+                    // Se fechou sem atingir COMPLETED ou FAILED, ativa polling para garantir continuidade
+                    if (!isTerminalStateReached) {
+                        viewModelScope.launch(Dispatchers.Main) {
+                            startPollingStatus(taskId, filename)
+                        }
+                    }
                 }
             )
         } catch (e: Exception) {
@@ -1048,15 +1072,20 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
             exoPlayer.pause()
         } else {
             val readyState = _uiState.value.separationState as? SeparationUiState.Ready
+            val activeSong = _uiState.value.activeKaraokeSong
             val currentStem = _uiState.value.activeStem
+
             val currentTargetUrl = if (currentStem == StemType.VOCALS) {
-                readyState?.track?.vocalsUrl
+                readyState?.track?.vocalsUrl ?: activeSong?.vocalsUrl
             } else {
-                readyState?.track?.instrumentalUrl
+                readyState?.track?.instrumentalUrl ?: activeSong?.instrumentalUrl
             }
 
-            if (exoPlayer.playbackState == Player.STATE_IDLE && currentTargetUrl != null) {
+            if ((exoPlayer.playbackState == Player.STATE_IDLE || exoPlayer.currentMediaItem == null) && currentTargetUrl != null) {
                 preparePlayer(currentTargetUrl, autoPlay = true)
+            } else if (exoPlayer.playbackState == Player.STATE_ENDED) {
+                exoPlayer.seekTo(0L)
+                exoPlayer.play()
             } else {
                 exoPlayer.play()
             }
@@ -1064,20 +1093,21 @@ class HomeViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun switchStem(stem: StemType) {
-        val readyState = _uiState.value.separationState as? SeparationUiState.Ready ?: return
-        val currentPos = exoPlayer.currentPosition
-        val wasPlaying = exoPlayer.isPlaying
+        val readyState = _uiState.value.separationState as? SeparationUiState.Ready
+        val activeSong = _uiState.value.activeKaraokeSong
 
         val rawUrl = when (stem) {
-            StemType.INSTRUMENTAL -> readyState.track.instrumentalUrl
-            StemType.VOCALS -> readyState.track.vocalsUrl
-            StemType.ORIGINAL -> readyState.track.instrumentalUrl
+            StemType.INSTRUMENTAL -> readyState?.track?.instrumentalUrl ?: activeSong?.instrumentalUrl
+            StemType.VOCALS -> readyState?.track?.vocalsUrl ?: activeSong?.vocalsUrl
+            StemType.ORIGINAL -> readyState?.track?.instrumentalUrl ?: activeSong?.instrumentalUrl
         } ?: return
 
         val targetUrl = sanitizeUrl(rawUrl) ?: return
         _uiState.update { it.copy(activeStem = stem) }
 
         viewModelScope.launch(Dispatchers.Main) {
+            val currentPos = exoPlayer.currentPosition
+            val wasPlaying = exoPlayer.isPlaying
             exoPlayer.setMediaItem(MediaItem.fromUri(targetUrl))
             exoPlayer.prepare()
             exoPlayer.seekTo(currentPos)

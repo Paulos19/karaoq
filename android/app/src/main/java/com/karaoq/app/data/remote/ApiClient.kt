@@ -13,7 +13,7 @@ object ApiClient {
         private set
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
-        level = HttpLoggingInterceptor.Level.BODY
+        level = HttpLoggingInterceptor.Level.HEADERS
     }
 
     private val okHttpClient = OkHttpClient.Builder()

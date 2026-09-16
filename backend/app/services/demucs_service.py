@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -36,6 +37,35 @@ class SeparationTask:
     created_at: float = field(default_factory=time.time)
     updated_at: float = field(default_factory=time.time)
     error: Optional[str] = None
+
+
+def convert_wav_to_mp3(wav_path: Path, mp3_path: Path, bitrate_kbps: int = 320) -> bool:
+    """
+    Converte um arquivo WAV para MP3 usando lameenc nativo de alta performance.
+    """
+    try:
+        import lameenc
+        import wave
+        with wave.open(str(wav_path), "rb") as w:
+            nchannels = w.getnchannels()
+            sampwidth = w.getsampwidth()
+            framerate = w.getframerate()
+            frames = w.readframes(w.getnframes())
+
+        if sampwidth == 2:  # 16-bit PCM
+            encoder = lameenc.Encoder()
+            encoder.set_bit_rate(bitrate_kbps)
+            encoder.set_in_sample_rate(framerate)
+            encoder.set_channels(nchannels)
+            encoder.set_quality(2)
+            mp3_bytes = encoder.encode(frames)
+            mp3_bytes += encoder.flush()
+            with open(mp3_path, "wb") as f:
+                f.write(mp3_bytes)
+            return True
+    except Exception as ex:
+        logger.warning(f"Falha ao converter {wav_path} para MP3 via lameenc: {ex}")
+    return False
 
 
 class DemucsService:
@@ -90,8 +120,10 @@ class DemucsService:
 
     async def execute_separation(self, task_id: str):
         """
-        Executa a separação de áudio assincronamente usando o Demucs.
-        Prioriza htdemucs com --two-stems=vocals para isolar 'vocals' e 'no_vocals' (instrumental).
+        Executa a separação de áudio assincronamente usando o Demucs com:
+        1. Streaming de progresso real via leitura de stderr (evitando timeout de proxies reversos).
+        2. Limites de memória e segmentação para prevenir crash por OOM.
+        3. Validação rigorosa dos arquivos gerados (impedindo 'sem áudio' / 404).
         """
         task = self.get_task(task_id)
         if not task:
@@ -102,23 +134,28 @@ class DemucsService:
             task_id,
             status=TaskStatusEnum.PROCESSING,
             progress_percentage=15,
-            message="Iniciando modelo de IA (htdemucs 2-stems)..."
+            message="Carregando modelo de IA (htdemucs)..."
         )
 
         task_output_dir = settings.SEPARATED_DIR / task_id
         task_output_dir.mkdir(parents=True, exist_ok=True)
 
         try:
-            # Comando demucs
-            # demucs -n <model> --two-stems=vocals --mp3 --mp3-bitrate 320 -o <task_output_dir> <input_file>
             device_arg = []
             if settings.DEMUCS_DEVICE != "auto":
                 device_arg = ["-d", settings.DEMUCS_DEVICE]
 
+            # Parâmetros otimizados:
+            # - --segment 8: segmenta o processamento para manter consumo de RAM baixo (< 1GB)
+            # - -j 1: previne saturação de CPU/threads em VPS
+            # - --filename: garante padrão consistente de saída dos stems
             cmd = [
                 sys.executable, "-m", "demucs.separate",
                 "-n", settings.DEMUCS_MODEL,
                 f"--two-stems={settings.DEMUCS_TWO_STEMS}",
+                "--filename", "{stem}.{ext}",
+                "--segment", "8",
+                "-j", "1",
                 "--mp3",
                 f"--mp3-bitrate={settings.DEMUCS_MP3_BITRATE}",
                 "-o", str(task_output_dir),
@@ -126,29 +163,67 @@ class DemucsService:
                 str(task.input_path)
             ]
 
-            logger.info(f"Executando comando Demucs para tarefa {task_id}: {' '.join(cmd)}")
+            logger.info(f"Iniciando comando Demucs para tarefa {task_id}: {' '.join(cmd)}")
 
             await self.update_task(
                 task_id,
-                progress_percentage=35,
-                message="Separando faixas de voz e instrumental com IA..."
+                progress_percentage=30,
+                message="Iniciando separação com IA..."
             )
 
-            # Executa o subprocesso de forma assíncrona
+            # Inicia o subprocesso
             process = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE
             )
 
-            stdout, stderr = await process.communicate()
+            stderr_chunks = []
+            progress_regex = re.compile(r"(\d{1,3})%")
+            last_progress_time = time.time()
+            last_pct_sent = 30
+
+            # Monitora o stderr em tempo real para capturar as atualizações da barra de progresso do Demucs
+            async def monitor_stderr():
+                nonlocal last_progress_time, last_pct_sent
+                while True:
+                    chunk = await process.stderr.read(256)
+                    if not chunk:
+                        break
+                    text = chunk.decode("utf-8", errors="replace")
+                    stderr_chunks.append(text)
+
+                    # Verifica porcentagem
+                    matches = progress_regex.findall(text)
+                    if matches:
+                        try:
+                            demucs_pct = int(matches[-1])
+                            now = time.time()
+                            # Envia atualizações a cada 1.5s ou se houver salto relevante
+                            if now - last_progress_time >= 1.5 or demucs_pct >= 99:
+                                overall_pct = 30 + int(demucs_pct * 0.55)  # 30% a 85%
+                                if overall_pct != last_pct_sent:
+                                    last_pct_sent = overall_pct
+                                    last_progress_time = now
+                                    await self.update_task(
+                                        task_id,
+                                        progress_percentage=overall_pct,
+                                        message=f"Separando faixas com IA ({demucs_pct}%)..."
+                                    )
+                        except Exception:
+                            pass
+
+            # Aguarda a leitura contínua de stderr e a conclusão do processo
+            await asyncio.gather(monitor_stderr(), process.wait())
+            stderr_output = "".join(stderr_chunks)
 
             if process.returncode != 0:
-                err_msg = stderr.decode('utf-8', errors='replace')
-                logger.error(f"Erro na execução do Demucs para tarefa {task_id}: {err_msg}")
-                # Verifica se o demucs está instalado; se não estiver, exibe instrução clara
-                if "No module named demucs" in err_msg:
-                    err_msg = "Módulo Demucs não instalado no ambiente Python. Instale com 'pip install -r requirements.txt'."
+                logger.error(f"Erro na execução do Demucs para tarefa {task_id}: {stderr_output}")
+                err_msg = stderr_output
+                if "No module named demucs" in stderr_output:
+                    err_msg = "Módulo Demucs não instalado no ambiente Python."
+                elif not err_msg.strip():
+                    err_msg = "Processo de IA interrompido inesperadamente (possível falta de memória)."
                 await self.update_task(
                     task_id,
                     status=TaskStatusEnum.FAILED,
@@ -159,35 +234,60 @@ class DemucsService:
 
             await self.update_task(
                 task_id,
-                progress_percentage=85,
-                message="Organizando arquivos de saída gerados..."
+                progress_percentage=88,
+                message="Processando e validando stems gerados..."
             )
 
-            # Demucs cria uma pasta: <task_output_dir>/<model>/<input_stem>/[vocals.mp3, no_vocals.mp3]
+            # Localiza os arquivos gerados (podem estar em task_output_dir ou subpastas de modelo)
+            vocals_source: Optional[Path] = None
+            no_vocals_source: Optional[Path] = None
+
+            search_dirs = [task_output_dir]
             model_dir = task_output_dir / settings.DEMUCS_MODEL
-            input_stem_dir = None
-
             if model_dir.exists():
-                subdirs = [d for d in model_dir.iterdir() if d.is_dir()]
-                if subdirs:
-                    input_stem_dir = subdirs[0]
+                search_dirs.append(model_dir)
+                search_dirs.extend([d for d in model_dir.iterdir() if d.is_dir()])
 
-            if not input_stem_dir or not input_stem_dir.exists():
-                raise FileNotFoundError(f"Diretório de saída do Demucs não encontrado em {model_dir}")
+            for d in search_dirs:
+                if not d.exists():
+                    continue
+                for f in d.iterdir():
+                    if f.is_file():
+                        fname = f.name.lower()
+                        if "vocals" in fname and "no_vocals" not in fname:
+                            vocals_source = f
+                        elif "no_vocals" in fname or "instrumental" in fname:
+                            no_vocals_source = f
 
-            vocals_source = input_stem_dir / "vocals.mp3"
-            no_vocals_source = input_stem_dir / "no_vocals.mp3"
+            if not vocals_source or not no_vocals_source:
+                raise FileNotFoundError(
+                    f"Arquivos gerados pelo Demucs não foram encontrados no diretório de saída: {task_output_dir}"
+                )
 
-            # Destino padronizado dentro de /storage/separated/{task_id}/
             dest_vocals = task_output_dir / "vocals.mp3"
             dest_instrumental = task_output_dir / "instrumental.mp3"
 
-            if vocals_source.exists():
+            # Copia ou converte vocal
+            if vocals_source.suffix.lower() == ".mp3":
                 shutil.copy2(vocals_source, dest_vocals)
-            if no_vocals_source.exists():
-                shutil.copy2(no_vocals_source, dest_instrumental)
+            else:
+                if not convert_wav_to_mp3(vocals_source, dest_vocals):
+                    shutil.copy2(vocals_source, dest_vocals)
 
-            # Caminhos relativos para URLs da API
+            # Copia ou converte instrumental
+            if no_vocals_source.suffix.lower() == ".mp3":
+                shutil.copy2(no_vocals_source, dest_instrumental)
+            else:
+                if not convert_wav_to_mp3(no_vocals_source, dest_instrumental):
+                    shutil.copy2(no_vocals_source, dest_instrumental)
+
+            # Validação rigorosa: assegura que os arquivos existem e têm áudio real (> 1000 bytes)
+            if not dest_vocals.exists() or dest_vocals.stat().st_size < 1000:
+                raise RuntimeError("Arquivo de voz gerado está vazio ou ausente.")
+            if not dest_instrumental.exists() or dest_instrumental.stat().st_size < 1000:
+                raise RuntimeError("Arquivo instrumental gerado está vazio ou ausente.")
+
+            # Caminhos relativos padrão da API
             vocals_rel = f"separated/{task_id}/vocals.mp3"
             inst_rel = f"separated/{task_id}/instrumental.mp3"
 
@@ -199,7 +299,10 @@ class DemucsService:
                 vocals_relative_path=vocals_rel,
                 instrumental_relative_path=inst_rel
             )
-            logger.info(f"Tarefa {task_id} finalizada com sucesso. Stems: {vocals_rel}, {inst_rel}")
+            logger.info(
+                f"Tarefa {task_id} finalizada com sucesso. Stems validados: "
+                f"vocals={dest_vocals.stat().st_size}B, instrumental={dest_instrumental.stat().st_size}B"
+            )
 
         except Exception as ex:
             logger.exception(f"Exceção inesperada na separação da tarefa {task_id}: {str(ex)}")
@@ -212,3 +315,4 @@ class DemucsService:
 
 
 demucs_service = DemucsService()
+

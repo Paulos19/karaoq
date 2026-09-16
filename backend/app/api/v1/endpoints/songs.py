@@ -43,7 +43,7 @@ class SongResponse(BaseModel):
 
 def resolve_audio_urls(song_dict: Dict[str, Any], request: Request) -> Dict[str, Any]:
     """
-    Garante que as URLs de vocals e instrumental estejam completas e resolvidas com o host correto.
+    Garante que as URLs de vocals e instrumental estejam completas e resolvidas com o host correto da requisição ativa.
     """
     data = dict(song_dict)
     forwarded_proto = request.headers.get("x-forwarded-proto")
@@ -53,9 +53,8 @@ def resolve_audio_urls(song_dict: Dict[str, Any], request: Request) -> Dict[str,
     base_url = f"{scheme}://{host}".rstrip("/")
 
     song_id = data.get("id")
-    if not data.get("vocals_url") and song_id:
+    if song_id:
         data["vocals_url"] = f"{base_url}/storage/separated/{song_id}/vocals.mp3"
-    if not data.get("instrumental_url") and song_id:
         data["instrumental_url"] = f"{base_url}/storage/separated/{song_id}/instrumental.mp3"
 
     return data

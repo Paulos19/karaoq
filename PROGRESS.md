@@ -100,9 +100,23 @@ Acompanhamento em tempo real do desenvolvimento do KaraoQ (Backend IA + Android 
 - [x] Configuração centralizada de credenciais LyricFind (`LYRICFIND_API_URL`, `LYRICFIND_API_KEY`, `LYRICFIND_LRC_KEY`, `LYRICFIND_DISPLAY_KEY`)
 - [x] Cadeia de fallback resiliente para busca de letras: LyricFind -> LRCLIB (busca precisa & busca geral) -> YouTube Lyrics
 
-### 11. Próximos Passos (Fases Futuras)
+### 11. Correção do Processamento Demucs, Streaming Real de Separação e Resolução de Áudio (Concluída)
+- [x] Leitura assíncrona do `stderr` no `demucs_service.py` com streaming real de progresso percentual via WebSocket (30% a 85%)
+- [x] Prevenção de timeout (60s) de proxies reversos (Easypanel/Traefik) através de pacotes periódicos contínuos durante a separação
+- [x] Otimização de parâmetros do Demucs (`--segment 8`, `-j 1`) para redução drástica de pico de RAM e prevenção de falhas por Out of Memory (OOM)
+- [x] Validação estrita de arquivos gerados (verificação de existência e tamanho real > 1000B), eliminando arquivos fantasmas vazios
+- [x] Conversão automática WAV -> MP3 (320kbps via `lameenc`) caso o Demucs gere saída em formato PCM não comprimido
+- [x] Resolução dinâmica de URLs de áudio no backend (`songs.py`) garantindo que stems sempre apontem para o host da requisição ativa
+- [x] Fallback automático incondicional para polling HTTP no app Android (`HomeViewModel.kt`) em caso de desconexão inesperada de WebSocket
+- [x] Sanitização dinâmica de URLs no Android (`sanitizeUrl`) suportando caminhos relativos e adaptação de domínio/protocolo para o backend ativo
+- [x] Ajuste no ExoPlayer para suporte a replay (`seekTo(0)`) no estado `STATE_ENDED` e alternância segura de stems com `switchStem`
+- [x] Otimização do interceptor OkHttp para `Level.HEADERS`, eliminando buffers de áudio na RAM durante o upload
+- [x] Compilação do novo APK (`app-debug.apk` 19.78 MB) e instalação com sucesso no dispositivo físico via USB
+
+### 12. Próximos Passos (Fases Futuras)
 - [ ] Mixagem e masterização de áudio em tempo real com efeitos de estúdio (Reverb, Delay, Compressor e Equalizador)
 - [ ] Modo Duelo / Batalha de Voz com dois microfones ou pontuação competitiva lado a lado
 - [ ] Suporte a playlists, fila de espera ("Fila de Karaokê") e modo festa (Party Mode)
+
 
 
